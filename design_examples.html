@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turbinist Chat — Полный дизайн</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { font-family: 'Inter', sans-serif; }
+  body { background: #e8eaed; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+  /* Чат-фрейм — шире обычного */
+  .chat-frame { width: 500px; background: white; border-radius: 20px; box-shadow: 0 8px 50px rgba(0,0,0,0.15); overflow: hidden; }
+  .chat-scroll { height: 680px; overflow-y: auto; padding: 14px; background: #f8f9fc; display: flex; flex-direction: column; gap: 8px; }
+  .chat-scroll::-webkit-scrollbar { width: 4px; }
+  .chat-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+  /* Сообщения */
+  .msg-bot { background: #f0f4ff; border: 1px solid #e0e7ff; border-radius: 14px 14px 14px 4px; padding: 10px 14px; }
+  .msg-user { background: #2563eb; color: white; border-radius: 14px 14px 4px 14px; padding: 10px 14px; max-width: 85%; align-self: flex-end; }
+  .msg-admin-bot { background: #fef9f0; border: 1px solid #fde68a; border-radius: 14px 14px 14px 4px; padding: 10px 14px; }
+
+  /* Платформы */
+  .plat-btn { transition: all 0.15s ease; border-radius: 10px; padding: 8px 10px; font-size: 12px; font-weight: 500; border: 1.5px solid transparent; cursor: default; }
+  .plat-btn.on { background: #2563eb; color: white; border-color: #2563eb; }
+  .plat-btn.off { background: white; color: #6b7280; border-color: #e5e7eb; }
+  .pin-btn { transition: all 0.15s ease; border-radius: 10px; padding: 6px 12px; font-size: 11px; font-weight: 500; border: 1.5px solid; cursor: default; }
+  .pin-btn.on { background: #ea580c; color: white; border-color: #ea580c; }
+  .pin-btn.off { background: white; color: #6b7280; border-color: #e5e7eb; }
+
+  .price-tag { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #f59e0b; border-radius: 10px; padding: 10px 14px; }
+  .preview-cloud { background: white; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+
+  @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .anim-in { animation: fadeSlideUp 0.35s ease-out; }
+
+  /* Табы БОЛЬШИЕ (переключение сцен) */
+  .big-tabs { display: flex; gap: 4px; padding: 8px 10px 0; background: #f8f9fc; border-bottom: 1px solid #e5e7eb; overflow-x: auto; }
+  .big-tab { font-size: 11px; font-weight: 700; padding: 7px 14px; border-radius: 10px 10px 0 0; cursor: pointer; transition: all 0.15s; white-space: nowrap; border: 1px solid transparent; border-bottom: none; }
+  .big-tab.active { background: white; color: #1d4ed8; border-color: #e5e7eb; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
+  .big-tab:not(.active) { background: #f1f3f5; color: #6b7280; }
+  .big-tab:not(.active):hover { background: #e5e7eb; }
+
+  /* Контент табов */
+  .tab-content { display: none; }
+  .tab-content.active { display: flex; flex-direction: column; gap: 8px; }
+
+  /* Аватар */
+  .avatar-small { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
+
+  .stat-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; text-align: center; }
+  .stat-num { font-size: 22px; font-weight: 800; line-height: 1.2; }
+  .stat-label { font-size: 9px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  .progress-bar { height: 8px; border-radius: 4px; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<div class="chat-frame">
+  <!-- ===== ШАПКА ===== -->
+  <div class="bg-gradient-to-r from-blue-700 to-blue-600 text-white px-5 py-3 flex items-center gap-3">
+    <div class="avatar-small" style="width:34px;height:34px;font-size:15px;background:#22c55e;">TB</div>
+    <div>
+      <div class="font-bold">Turbinist Chat Bot</div>
+      <div class="text-xs text-blue-200">Дизайн-примеры всех сценариев</div>
+    </div>
+    <div class="ml-auto text-xs text-blue-200">🎨 v2</div>
+  </div>
+
+  <!-- ===== БОЛЬШИЕ ТАБЫ ===== -->
+  <div class="big-tabs" id="bigTabs">
+    <div class="big-tab active" data-tab="user-main">👤 Главная</div>
+    <div class="big-tab" data-tab="user-access">⏱ Доступ</div>
+    <div class="big-tab" data-tab="user-requests">📋 Заявки</div>
+    <div class="big-tab" data-tab="admin-panel">🔐 Админка</div>
+    <div class="big-tab" data-tab="admin-stats">📊 Статистика</div>
+    <div class="big-tab" data-tab="admin-preview">👁 Просмотр</div>
+    <div class="big-tab" data-tab="admin-chats">💬 Чаты</div>
+  </div>
+
+  <!-- ===== КОНТЕНТ ===== -->
+  <div class="chat-scroll" id="chatScroll">
+
+    <!-- ================================================================ -->
+    <!-- ТАБ 1: 👤 Главная (юзер) -->
+    <!-- ================================================================ -->
+    <div class="tab-content active" id="tab-user-main">
+
+      <!-- Привет -->
+      <div class="msg-bot text-sm text-gray-800 anim-in">
+        <div class="text-[10px] font-semibold" style="color:#3b82f6;">🤖 БОТ</div>
+        <p>Привет, <strong>test_login</strong>! 👋</p>
+        <p class="text-xs text-gray-500 mt-0.5">Выбери действие из меню 👇</p>
+      </div>
+
+      <!-- Меню -->
+      <div class="grid grid-cols-5 gap-1.5 anim-in">
+        <div class="bg-white border border-gray-200 rounded-xl p-2 text-center" style="background:#eff6ff;border-color:#bfdbfe;">
+          <span class="text-lg">📢</span>
+          <div class="text-[8px] font-bold" style="color:#1d4ed8;">Реклама</div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-2 text-center">
+          <span class="text-lg">📰</span>
+          <div class="text-[8px] font-semibold text-gray-500">Новость</div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-2 text-center">
+          <span class="text-lg">⏱</span>
+          <div class="text-[8px] font-semibold text-gray-500">Доступ</div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-2 text-center">
+          <span class="text-lg">📋</span>
+          <div class="text-[8px] font-semibold text-gray-500">Заявки</div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-2 text-center">
+          <span class="text-lg">💬</span>
+          <div class="text-[8px] font-semibold text-gray-500">Админу</div>
+        </div>
+      </div>
+
+      <!-- Выбор рекламы -->
+      <div class="msg-bot text-sm text-gray-800 anim-in">
+        <div class="text-[10px] font-semibold" style="color:#3b82f6;">💰 РЕКЛАМА</div>
+        Выберите тип размещения:
+      </div>
+      <div class="flex gap-2 anim-in">
+        <div class="flex-1 px-4 py-3 rounded-xl text-sm font-bold text-center shadow-sm" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;">
+          <span class="block text-lg mb-0.5">📢</span> Объявление
+        </div>
+        <div class="flex-1 px-4 py-3 rounded-xl text-sm font-bold text-center shadow-sm" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;">
+          <span class="block text-lg mb-0.5">🎯</span> Баннер / Статья
+        </div>
+      </div>
+
+      <!-- Текст -->
+      <div class="msg-bot text-sm text-gray-800 anim-in"><span class="font-medium">📝 Текст объявления:</span></div>
+      <div class="msg-user text-sm anim-in">Продам турбину ГТК-10-4. Полный комплект, документация. Торг уместен.</div>
+
+      <!-- Площадки -->
+      <div class="msg-bot text-sm text-gray-800 anim-in">
+        <div class="font-medium mb-1.5">🌐 Выберите площадки:</div>
+        <div class="grid grid-cols-2 gap-1">
+          <div class="plat-btn on">☑ Сайт — 900₽</div>
+          <div class="plat-btn off">☐ Telegram — 900₽</div>
+          <div class="plat-btn on">☑ VK — 900₽</div>
+          <div class="plat-btn on">☑ MAX — 900₽</div>
+        </div>
+      </div>
+
+      <!-- Дни (свободный ввод) -->
+      <div class="msg-bot text-sm text-gray-800 anim-in"><span class="font-medium">📅 Сколько дней?</span></div>
+      <div class="msg-user text-sm anim-in">7</div>
+
+      <!-- Закрепление -->
+      <div class="msg-bot text-sm text-gray-800 border-l-4 border-orange-400 anim-in">
+        <div class="flex items-center gap-2 mb-1"><span>📌</span><span class="font-medium">Закрепить?</span></div>
+        <div class="text-xs text-gray-500 mb-1.5">300₽/день за площадку</div>
+        <div class="flex gap-2">
+          <div class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium cursor-default">✅ Да</div>
+          <div class="px-4 py-1.5 bg-white border border-gray-200 rounded-lg text-xs cursor-default">❌ Нет</div>
+        </div>
+      </div>
+
+      <div class="msg-bot text-sm text-gray-800 border-l-4 border-orange-400 anim-in">
+        <span class="font-medium">📌 Сколько дней закрепить?</span>
+      </div>
+      <div class="msg-user text-sm anim-in">3</div>
+
+      <!-- Площадки закрепления -->
+      <div class="msg-bot text-sm text-gray-800 border-l-4 border-orange-400 anim-in">
+        <div class="font-medium mb-1">📌 Где закрепить?</div>
+        <p class="text-[10px] text-gray-500 mb-1.5">Опубликовано: Сайт, VK, MAX</p>
+        <div class="flex gap-1.5">
+          <div class="pin-btn on">☑ Сайт</div>
+          <div class="pin-btn off">☐ VK</div>
+          <div class="pin-btn off">☐ MAX</div>
+        </div>
+      </div>
+
+      <!-- Разделитель -->
+      <div class="flex items-center gap-2 my-1"><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#93c5fd,transparent);"></div><span class="text-[9px] font-bold" style="color:#60a5fa;">⬇ ПРЕДПРОСМОТР</span><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#93c5fd,transparent);"></div></div>
+
+      <!-- Карточка предпросмотра -->
+      <div class="preview-cloud anim-in">
+        <div class="flex items-center gap-2 px-3 py-2" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+          <span class="text-xs font-bold" style="color:#1d4ed8;">📢 Объявление в ленте</span>
+          <span class="ml-auto text-[9px] font-bold px-2 py-0.5 rounded-full" style="background:#dcfce7;color:#166534;">🆕</span>
+        </div>
+        <div class="p-3 text-sm text-gray-800 border-b border-gray-50">Продам турбину ГТК-10-4. Полный комплект, документация. Торг уместен.</div>
+        <div class="mx-3 my-2 rounded-lg border border-gray-100" style="height:100px;background:linear-gradient(135deg,#e8f0fe,#d2e3fc);"></div>
+        <div class="px-3 pb-2 flex flex-wrap gap-1">
+          <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-medium">🌐 Сайт</span>
+          <span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px]">VK</span>
+          <span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px]">MAX</span>
+          <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px]">📌 3 дня (Сайт)</span>
+          <span class="text-[10px] text-gray-400">📅 7 дн.</span>
+        </div>
+        <div class="price-tag mx-3 mb-3 flex items-center justify-between">
+          <span class="font-medium" style="color:#92400e;">💰 Итого:</span>
+          <span class="font-bold text-lg" style="color:#78350f;">19 800 ₽</span>
+        </div>
+        <div class="px-3 pb-3 flex gap-2">
+          <div class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-center shadow-sm cursor-default" style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;">✅ Отправить</div>
+          <div class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm cursor-default">✏️ Править</div>
+        </div>
+      </div>
+
+      <!-- Подтверждение -->
+      <div class="rounded-xl overflow-hidden anim-in border border-green-200">
+        <div class="px-4 py-3 text-center" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);">
+          <div class="text-2xl mb-0.5">🎉</div>
+          <div class="font-bold text-green-800 text-sm">Заявка принята!</div>
+          <div class="text-xs text-green-600">№ <span class="font-mono font-bold">63</span></div>
+        </div>
+        <div class="px-4 py-3 space-y-1 text-xs" style="background:#f0fdf4;">
+          <div class="flex items-center gap-2"><span>📢</span><span class="text-gray-600">Объявление · 7 дней</span></div>
+          <div class="flex items-center gap-2"><span>🌐</span><span class="text-gray-600">Сайт, VK, MAX</span></div>
+          <div class="flex items-center gap-2"><span>📌</span><span class="text-gray-600">3 дня на Сайт <span class="text-orange-600 font-medium">+900₽</span></span></div>
+          <div class="border-t border-green-200 pt-1.5 mt-1.5 flex justify-between font-bold text-sm">
+            <span>💰 Сумма:</span>
+            <span class="text-green-700">19 800 ₽</span>
+          </div>
+          <div class="text-center text-[10px] text-gray-400 pt-1">Администратор свяжется с вами</div>
+        </div>
+      </div>
+
+      <!-- Новость -->
+      <div class="flex items-center gap-2 my-1"><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#fdba74,transparent);"></div><span class="text-[9px] font-bold" style="color:#fb923c;">📰 НОВОСТЬ</span><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#fdba74,transparent);"></div></div>
+
+      <div class="msg-bot text-sm text-gray-800 anim-in"><span class="font-medium">📰 Напишите текст новости:</span></div>
+      <div class="msg-user text-sm anim-in">ГТК-10-4: полный гайд по эксплуатации и ремонту</div>
+
+      <div class="preview-cloud anim-in">
+        <div class="flex items-center gap-2 px-3 py-2" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);">
+          <span class="text-xs font-bold" style="color:#c2410c;">📰 Предпросмотр новости</span>
+        </div>
+        <div class="p-3">
+          <div class="font-bold text-sm mb-1">ГТК-10-4: полный гайд по эксплуатации</div>
+          <div class="text-xs text-gray-600">Рассказываем про особенности эксплуатации ГТК-10-4, типичные неисправности...</div>
+        </div>
+        <div class="mx-3 mb-3 rounded-lg border border-gray-100" style="height:60px;background:linear-gradient(135deg,#f5f5f5,#e5e5e5);"></div>
+        <div class="px-3 pb-3 flex gap-2">
+          <div class="flex-1 px-4 py-2 rounded-xl text-sm font-semibold text-center cursor-default" style="background:linear-gradient(135deg,#f97316,#ea580c);color:white;">✅ Отправить</div>
+          <div class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm cursor-default">✏️ Править</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- ТАБ 2: ⏱ Доступ (юзер) -->
+    <!-- ================================================================ -->
+    <div class="tab-content" id="tab-user-access">
+
+      <div class="msg-bot text-sm text-gray-800 anim-in">
+        <div class="text-[10px] font-semibold" style="color:#3b82f6;">⏱ МОИ ДОСТУПЫ</div>
+        Здесь отображаются ваши активные подписки на группы.
+      </div>
+
+      <!-- Доступ 1: активный -->
+      <div class="rounded-xl overflow-hidden anim-in" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;">
+        <div class="px-4 py-3">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="text-sm font-bold text-gray-800">🔥 Расширенный доступ</span>
+              <div class="text-xs text-gray-500 mt-0.5">👑 Группа: <strong>Работники</strong></div>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold" style="background:#bbf7d0;color:#166534;">Активен</span>
+          </div>
+          <div class="flex justify-between text-[11px] text-gray-500 mb-1">
+            <span>Куплен: 01.05.2026</span>
+            <span>Действует до: <strong>31.05.2026</strong></span>
+          </div>
+          <div class="mb-1">
+            <div class="flex justify-between text-[10px] mb-0.5">
+              <span class="font-semibold" style="color:#1d4ed8;">Осталось 24 дня</span>
+              <span class="text-gray-400">из 30</span>
+            </div>
+            <div class="progress-bar bg-gray-200">
+              <div class="h-full rounded-full" style="width:80%;background:linear-gradient(90deg,#3b82f6,#60a5fa);"></div>
+            </div>
+          </div>
+          <div class="flex justify-between items-center mt-2">
+            <span class="text-[10px]" style="color:#16a34a;">✅ 80% — активно</span>
+            <span class="px-3 py-1 rounded-lg text-xs font-semibold cursor-default" style="background:#2563eb;color:white;">🔄 Продлить</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Доступ 2: истекает -->
+      <div class="rounded-xl overflow-hidden anim-in" style="background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5;">
+        <div class="px-4 py-3">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="text-sm font-bold text-gray-800">💎 VIP-доступ</span>
+              <div class="text-xs text-gray-500 mt-0.5">👑 Группа: <strong>VIP</strong></div>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold" style="background:#fca5a5;color:#991b1b;">Скоро</span>
+          </div>
+          <div class="flex justify-between text-[11px] text-gray-500 mb-1">
+            <span>Куплен: 10.05.2026</span>
+            <span>Действует до: <strong>24.05.2026</strong></span>
+          </div>
+          <div class="mb-1">
+            <div class="flex justify-between text-[10px] mb-0.5">
+              <span class="font-semibold" style="color:#dc2626;">Осталось 2 дня</span>
+              <span class="text-gray-400">из 14</span>
+            </div>
+            <div class="progress-bar bg-gray-200">
+              <div class="h-full rounded-full" style="width:15%;background:linear-gradient(90deg,#dc2626,#f87171);"></div>
+            </div>
+          </div>
+          <div class="flex justify-between items-center mt-2">
+            <span class="text-[10px] font-medium" style="color:#dc2626;">⚠️ Истекает через 2 дня!</span>
+            <span class="px-3 py-1 rounded-lg text-xs font-semibold cursor-default" style="background:#f97316;color:white;">🔄 Продлить</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Доступ 3: истекший -->
+      <div class="rounded-xl overflow-hidden anim-in opacity-60" style="background:#f9fafb;border:1px solid #d1d5db;">
+        <div class="px-4 py-3">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="text-sm font-bold text-gray-500">📦 Базовый доступ</span>
+              <div class="text-xs text-gray-400 mt-0.5">👑 Группа: <strong>Новичок</strong></div>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-500">Завершён</span>
+          </div>
+          <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+            <span>Куплен: 01.03.2026</span>
+            <span>Закончился: <strong>31.03.2026</strong></span>
+          </div>
+          <div class="mb-1">
+            <div class="flex justify-between text-[10px] mb-0.5">
+              <span class="text-gray-400">Осталось 0 дней</span>
+              <span class="text-gray-400">из 30</span>
+            </div>
+            <div class="progress-bar bg-gray-200">
+              <div class="h-full rounded-full bg-gray-300" style="width:100%;"></div>
+            </div>
+          </div>
+          <div class="mt-2">
+            <span class="px-3 py-1 rounded-lg text-xs font-semibold cursor-default" style="background:#2563eb;color:white;">🔄 Купить снова</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-[10px] text-gray-400 text-center py-2 anim-in">Всего доступов: 3 · Активных: 2</div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- ТАБ 3: 📋 Заявки (юзер) -->
+    <!-- ================================================================ -->
+    <div class="tab-content" id="tab-user-requests">
+
+      <div class="msg-bot text-sm text-gray-800 anim-in">
+        <div class="text-[10px] font-semibold" style="color:#3b82f6;">📋 МОИ ЗАЯВКИ</div>
+        Ваши заявки на рекламу и новости:
+      </div>
+
+      <!-- Облачко 1: новая -->
+      <div class="rounded-xl overflow-hidden shadow-sm border anim-in" style="border-color:#bfdbfe;">
+        <div class="flex items-center gap-2 px-3 py-2" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+          <span class="text-xs font-bold" style="color:#1d4ed8;">📢 Объявление #63</span>
+          <span class="ml-auto text-[11px] px-1.5 py-0.5 rounded-full" style="background:#dcfce7;" title="Новая">🆕</span>
+          <span class="text-[9px] text-gray-400">17.05</span>
+        </div>
+        <div class="px-3 py-2.5 text-xs flex items-center">
+          <span class="text-gray-500">🌐 Сайт, VK, MAX · 7 дн. · 📌 3 дн.</span>
+          <span class="ml-auto font-bold text-gray-800">19 800 ₽</span>
+        </div>
+      </div>
+
+      <!-- Облачко 2: на рассмотрении -->
+      <div class="rounded-xl overflow-hidden shadow-sm border anim-in" style="border-color:#d8b4fe;">
+        <div class="flex items-center gap-2 px-3 py-2" style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff);">
+          <span class="text-xs font-bold" style="color:#6b21a8;">🎯 Баннер #64</span>
+          <span class="ml-auto text-[11px] px-1.5 py-0.5 rounded-full" style="background:#fef3c7;" title="На рассмотрении">⏳</span>
+          <span class="text-[9px] text-gray-400">17.05</span>
+        </div>
+        <div class="px-3 py-2.5 text-xs flex items-center">
+          <span class="text-gray-500">🎯 728×90 · В новостях · 2 мес.</span>
+          <span class="ml-auto font-bold text-gray-800">7 800 ₽</span>
+        </div>
+      </div>
+
+      <!-- Облачко 3: одобрена -->
+      <div class="rounded-xl overflow-hidden shadow-sm border anim-in" style="border-color:#a7f3d0;">
+        <div class="flex items-center gap-2 px-3 py-2" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);">
+          <span class="text-xs font-bold" style="color:#065f46;">📰 Статья #65</span>
+          <span class="ml-auto text-[11px] px-1.5 py-0.5 rounded-full" style="background:#d1fae5;" title="Одобрена">✅</span>
+          <span class="text-[9px] text-gray-400">16.05</span>
+        </div>
+        <div class="px-3 py-2.5 text-xs flex items-center">
+          <span class="text-gray-500">📰 Обычная · фиксация 5 дн.</span>
+          <span class="ml-auto font-bold text-gray-800">4 335 ₽</span>
+        </div>
+      </div>
+
+      <!-- Облачко 4: отклонена -->
+      <div class="rounded-xl overflow-hidden shadow-sm border anim-in opacity-70" style="border-color:#fecaca;">
+        <div class="flex items-center gap-2 px-3 py-2" style="background:linear-gradient(135deg,#fce4ec,#f8d7da);">
+          <span class="text-xs font-bold" style="color:#991b1b;">📢 Объявление #60</span>
+          <span class="ml-auto text-[11px] px-1.5 py-0.5 rounded-full" style="background:#fce4ec;" title="Отклонена">❌</span>
+          <span class="text-[9px] text-gray-400">10.05</span>
+        </div>
+        <div class="px-3 py-2.5 text-xs flex items-center">
+          <span class="text-gray-500">🌐 Сайт · 14 дн. · 📌 нет</span>
+          <span class="ml-auto font-bold text-red-400 line-through">25 200 ₽</span>
+        </div>
+      </div>
+
+      <!-- Сообщение админу -->
+      <div class="flex items-center gap-2 my-1"><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#93c5fd,transparent);"></div><span class="text-[9px] font-bold" style="color:#60a5fa;">💬 АДМИНУ</span><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#93c5fd,transparent);"></div></div>
+
+      <div class="msg-bot text-sm text-gray-800 anim-in">
+        <span class="font-medium">💬 Напишите сообщение администратору:</span>
+      </div>
+      <div class="msg-user text-sm anim-in">Здравствуйте! Когда будет готова заявка #63?</div>
+
+      <div class="text-[10px] text-gray-400 text-center py-1 anim-in">Ответ админа придёт уведомлением</div>
+
+      <div class="rounded-lg border p-2.5 text-xs text-gray-400 text-center anim-in" style="background:#f9fafb;border-color:#e5e7eb;border-style:dashed;">
+        📝 Поле ввода сообщения...
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- ТАБ 4: 🔐 Админка (панель) -->
+    <!-- ================================================================ -->
+    <div class="tab-content" id="tab-admin-panel">
+
+      <div class="msg-admin-bot text-sm text-gray-800 anim-in">
+        <div class="text-[10px] font-semibold" style="color:#ea580c;">🔐 АДМИН-ПАНЕЛЬ</div>
+        Добро пожаловать, <strong>admin</strong>! 👋
+      </div>
+
+      <!-- Счётчики -->
+      <div class="grid grid-cols-4 gap-1.5 anim-in">
+        <div class="stat-card"><div class="stat-num text-blue-600">3</div><div class="stat-label">📢 Реклама</div></div>
+        <div class="stat-card"><div class="stat-num text-orange-600">1</div><div class="stat-label">📰 Новости</div></div>
+        <div class="stat-card"><div class="stat-num text-purple-600">2</div><div class="stat-label">💬 Сообщ.</div></div>
+        <div class="stat-card"><div class="stat-num text-gray-500">5</div><div class="stat-label">🗂 Архив</div></div>
+      </div>
+
+      <!-- Подпись -->
+      <div class="text-[10px] text-gray-400 pb-1 anim-in">Выберите раздел сверху 👆 или смотрите список заявок ниже:</div>
+
+      <!-- Список заявок -->
+      <div class="border border-gray-200 rounded-lg p-1 space-y-0.5 bg-white anim-in">
+        <div class="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-blue-50 cursor-default">
+          <span>📢</span><span class="text-gray-400">#63</span>
+          <span class="text-gray-600 font-medium">test_login</span>
+          <span class="text-gray-400">(web)</span>
+          <span class="text-gray-400 truncate flex-1">— «Продам турбину...»</span>
+          <span class="text-[11px]" title="Новая">🆕</span>
+        </div>
+        <div class="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-blue-50 cursor-default">
+          <span>🎯</span><span class="text-gray-400">#64</span>
+          <span class="text-gray-600 font-medium">test_login</span>
+          <span class="text-gray-400">(web)</span>
+          <span class="text-gray-400 truncate flex-1">— «Баннер 728×90...»</span>
+          <span class="text-[11px]" title="На рассмотрении">⏳</span>
+        </div>
+        <div class="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-blue-50 cursor-default">
+          <span>📰</span><span class="text-gray-400">#65</span>
+          <span class="text-gray-600 font-medium">test_login</span>
+          <span class="text-gray-400">(web)</span>
+          <span class="text-gray-400 truncate flex-1">— «Модернизация...»</span>
+          <span class="text-[11px]" title="Новая">🆕</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- ТАБ 5: 📊 Статистика (админ) -->
+    <!-- ================================================================ -->
+    <div class="tab-content" id="tab-admin-stats">
+
+      <!-- Доход -->
+      <div class="rounded-xl overflow-hidden anim-in" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;">
+        <div class="px-4 py-3">
+          <div class="text-xs font-bold" style="color:#065f46;">💰 ДОХОД ЗА МАЙ 2026</div>
+          <div class="text-3xl font-extrabold mt-1" style="color:#047857;">87 450 ₽</div>
+          <div class="flex gap-3 mt-1.5 text-[10px]">
+            <span class="px-2 py-0.5 rounded font-medium" style="background:#a7f3d0;color:#065f46;">📈 +12% к апрелю</span>
+            <span class="text-gray-500 self-center">сред. чек 7 287₽</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Принято / Отклонено -->
+      <div class="grid grid-cols-2 gap-2 anim-in">
+        <div class="bg-white border border-gray-200 rounded-xl p-3">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm" style="background:#dcfce7;color:#16a34a;">✅</span>
+            <span class="text-xs font-semibold text-gray-700">Принято</span>
+          </div>
+          <div class="text-2xl font-bold" style="color:#16a34a;">8</div>
+          <div class="flex gap-2 text-[10px] text-gray-400 mt-0.5">
+            <span>📢 4</span><span>🎯 2</span><span>📰 2</span>
+          </div>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-xl p-3">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm" style="background:#fce4ec;color:#dc2626;">❌</span>
+            <span class="text-xs font-semibold text-gray-700">Отклонено</span>
+          </div>
+          <div class="text-2xl font-bold" style="color:#dc2626;">1</div>
+          <div class="text-[10px] text-gray-400 mt-0.5">📢 1 объявление</div>
+        </div>
+      </div>
+
+      <!-- График -->
+      <div class="bg-white border border-gray-200 rounded-xl p-3 anim-in">
+        <div class="text-xs font-semibold text-gray-700 mb-2">📊 ЗАЯВКИ ПО ДНЯМ</div>
+        <div class="flex items-end gap-1.5" style="height:50px;">
+          <div class="flex-1 bg-blue-200 rounded-t" style="height:16px;"></div>
+          <div class="flex-1 bg-blue-300 rounded-t" style="height:30px;"></div>
+          <div class="flex-1 bg-blue-400 rounded-t" style="height:42px;"></div>
+          <div class="flex-1 bg-blue-200 rounded-t" style="height:12px;"></div>
+          <div class="flex-1 bg-blue-500 rounded-t" style="height:50px;"></div>
+          <div class="flex-1 bg-blue-300 rounded-t" style="height:26px;"></div>
+          <div class="flex-1 bg-blue-100 rounded-t" style="height:8px;"></div>
+        </div>
+        <div class="flex justify-between text-[8px] text-gray-400 mt-1">
+          <span>11.05</span><span>12.05</span><span>13.05</span><span>14.05</span><span>15.05</span><span>16.05</span><span>17.05</span>
+        </div>
+      </div>
+
+      <!-- По типам -->
+      <div class="grid grid-cols-3 gap-1.5 anim-in">
+        <div class="stat-card" style="background:#f0f4ff;"><div class="stat-num text-blue-600">6</div><div class="stat-label">📢 Объявл.</div></div>
+        <div class="stat-card" style="background:#f3e8ff;"><div class="stat-num text-purple-600">3</div><div class="stat-label">🎯 Баннеров</div></div>
+        <div class="stat-card" style="background:#ecfdf5;"><div class="stat-num text-emerald-600">3</div><div class="stat-label">📰 Статей</div></div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- ТАБ 6: 👁 Просмотр (админ — детальный разбор заявки) -->
+    <!-- ================================================================ -->
+    <div class="tab-content" id="tab-admin-preview">
+
+      <!-- Карточка объявления -->
+      <div class="rounded-xl overflow-hidden border anim-in" style="background:linear-gradient(135deg,#fef9f0,#fff7ed);border-color:#fde68a;">
+        <div class="px-3.5 py-2" style="background:linear-gradient(135deg,#f97316,#ea580c);">
+          <div class="flex items-center justify-between">
+            <span class="text-white text-xs font-bold">📢 Объявление #63</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium" style="background:rgba(255,255,255,0.2);color:white;">🆕 Новая</span>
+          </div>
+        </div>
+        <div class="p-3.5 space-y-2 text-xs">
+          <div class="flex items-center gap-3 text-gray-600">
+            <span>👤 <strong class="text-gray-800">test_login</strong></span>
+            <span>|</span>
+            <span>📅 17.05.2026, 14:15</span>
+          </div>
+          <div class="rounded-lg p-2.5 border" style="background:rgba(255,255,255,0.6);border-color:#fde68a;">
+            <div class="font-semibold text-gray-700 mb-1">📋 Параметры:</div>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-600">
+              <span>🌐 Площадки: site, vk, max</span>
+              <span>📅 Дней: 7</span>
+              <span>📌 Закрепление: да (3 дн.)</span>
+              <span>📍 Площадка: Сайт</span>
+            </div>
+          </div>
+          <div class="bg-white rounded-lg p-2.5 border" style="border-color:#fde68a;">
+            <div class="font-semibold text-gray-700 mb-1">💰 Разбивка цены:</div>
+            <div class="space-y-0.5 text-gray-600">
+              <div class="flex justify-between"><span>🌐 Сайт</span><span>900₽ × 7 дн. = 6 300₽</span></div>
+              <div class="flex justify-between"><span>VK</span><span>900₽ × 7 дн. = 6 300₽</span></div>
+              <div class="flex justify-between"><span>MAX</span><span>900₽ × 7 дн. = 6 300₽</span></div>
+              <div class="flex justify-between font-medium" style="color:#ea580c;"><span>📌 Закрепление (Сайт)</span><span>300₽ × 1 × 3 дн. = +900₽</span></div>
+              <div class="border-t border-gray-200 pt-1 flex justify-between font-bold text-sm">
+                <span>💰 ИТОГО:</span>
+                <span style="color:#ea580c;">19 800 ₽</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Контент -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm anim-in">
+        <div class="p-3.5">
+          <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style="background:#dbeafe;color:#2563eb;">T</span>
+            <strong class="text-gray-700">test_login</strong>
+            <span>· 14:15</span>
+          </div>
+          <div class="text-sm text-gray-800 mb-2">Продам турбину ГТК-10-4. Полный комплект, документация. Торг уместен.</div>
+          <div class="rounded-lg border border-dashed" style="height:100px;background:linear-gradient(135deg,#fafafa,#f0f0f0);border-color:#e5e7eb;"></div>
+        </div>
+      </div>
+
+      <!-- Кнопки -->
+      <div class="flex gap-2 anim-in">
+        <div class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-center cursor-default shadow-sm" style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;">✅</div>
+        <div class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-center cursor-default shadow-sm" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:white;">❌</div>
+        <div class="px-4 py-2.5 rounded-lg text-sm font-semibold cursor-default shadow-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;">✏️💰</div>
+      </div>
+
+      <!-- Разделитель -->
+      <div class="flex items-center gap-2 my-1"><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent);"></div><span class="text-[9px] font-bold" style="color:#a78bfa;">🎯 БАННЕР #64</span><div class="flex-1 h-px" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent);"></div></div>
+
+      <!-- Карточка баннера -->
+      <div class="rounded-xl overflow-hidden border anim-in" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);border-color:#d8b4fe;">
+        <div class="px-3.5 py-2" style="background:linear-gradient(135deg,#9333ea,#7c3aed);">
+          <div class="flex items-center justify-between">
+            <span class="text-white text-xs font-bold">🎯 Баннер #64</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium" style="background:rgba(255,255,255,0.2);color:white;">⏳ В работе</span>
+          </div>
+        </div>
+        <div class="p-3.5 space-y-2 text-xs">
+          <div class="flex items-center gap-3 text-gray-600">
+            <span>👤 <strong class="text-gray-800">test_login</strong></span>
+            <span>|</span>
+            <span>📅 17.05.2026, 12:40</span>
+          </div>
+          <div class="rounded-lg p-2.5 border" style="background:rgba(255,255,255,0.6);border-color:#d8b4fe;">
+            <div class="font-semibold text-gray-700 mb-1">📋 Параметры:</div>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-600">
+              <span>📐 Размер: 728×90</span>
+              <span>📍 В новостях</span>
+              <span>📆 Месяцев: 2</span>
+              <span>🏠 Опция: Главная (+30%)</span>
+            </div>
+          </div>
+          <div class="bg-white rounded-lg p-2.5 border" style="border-color:#d8b4fe;">
+            <div class="font-semibold text-gray-700 mb-1">💰 Разбивка:</div>
+            <div class="space-y-0.5 text-gray-600">
+              <div class="flex justify-between"><span>База</span><span>3 000₽/мес × 2 = 6 000₽</span></div>
+              <div class="flex justify-between font-medium" style="color:#7c3aed;"><span>🏠 Главная (+30%)</span><span>+1 800₽</span></div>
+              <div class="border-t border-gray-200 pt-1 flex justify-between font-bold text-sm">
+                <span>💰 ИТОГО:</span>
+                <span style="color:#7c3aed;">7 800 ₽</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Контент баннера -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm anim-in">
+        <div class="p-3.5">
+          <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style="background:#f3e8ff;color:#7c3aed;">T</span>
+            <strong class="text-gray-700">test_login</strong>
+            <span>· 12:40</span>
+          </div>
+          <div class="flex gap-3 items-start">
+            <div class="flex-shrink-0 rounded-lg" style="width:80px;height:50px;background:linear-gradient(135deg,#f3e8ff,#e9d5ff);border:1px solid #d8b4fe;"></div>
+            <div class="text-xs space-y-0.5 text-gray-600">
+              <div><strong>728×90</strong> · В новостях · 2 мес.</div>
+              <div>🏠 Главная</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 anim-in">
+        <div class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-center cursor-default shadow-sm" style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;">✅</div>
+        <div class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-center cursor-default shadow-sm" style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:white;">❌</div>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- ТАБ 7: 💬 Чаты (админ) -->
+    <!-- ================================================================ -->
+    <div class="tab-content" id="tab-admin-chats">
+
+      <div class="msg-admin-bot text-sm text-gray-800 anim-in">
+        <div class="text-[10px] font-semibold" style="color:#ea580c;">💬 СООБЩЕНИЯ</div>
+        Выберите чат с пользователем:
+      </div>
+
+      <!-- Чат 1 (развёрнут) -->
+      <div class="border border-gray-200 rounded-xl overflow-hidden anim-in">
+        <div class="flex items-center gap-2.5 px-3 py-2.5 cursor-default hover:bg-gray-50" style="border-left:3px solid #2563eb;">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style="background:#2563eb;">T</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex justify-between">
+              <span class="text-xs font-semibold text-gray-800">test_login</span>
+              <span class="text-[10px] text-gray-400">2 мин. назад</span>
+            </div>
+            <div class="flex justify-between items-center mt-0.5">
+              <span class="text-[10px] text-gray-400">3 сообщения</span>
+              <span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white" style="background:#dc2626;">1</span>
+            </div>
+          </div>
+        </div>
+        <!-- Переписка -->
+        <div class="px-3 pb-3 bg-gray-50">
+          <div class="max-h-40 overflow-y-auto space-y-1.5 bg-white rounded-lg p-2.5 border border-gray-200">
+            <div class="flex justify-end">
+              <div class="max-w-[80%] px-2.5 py-1.5 rounded-2xl text-xs text-white rounded-br-md" style="background:#2563eb;">
+                <div class="text-[9px] font-medium opacity-70 mb-0.5">test_login</div>
+                <div>Здравствуйте! Когда будет готова заявка #63?</div>
+                <div class="text-[8px] text-blue-100 mt-0.5">2 мин. назад</div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="max-w-[80%] px-2.5 py-1.5 rounded-2xl text-xs bg-white border border-gray-200 text-gray-700 rounded-bl-md">
+                <div class="text-[9px] font-medium opacity-70 mb-0.5">Админ</div>
+                <div>Уже проверил, скоро подтвержу 👍</div>
+                <div class="text-[8px] text-gray-400 mt-0.5">сейчас</div>
+              </div>
+            </div>
+          </div>
+          <!-- Поле ввода -->
+          <div class="flex gap-1.5 mt-2">
+            <div class="flex-1 border border-gray-300 rounded-full px-3 py-1.5 text-xs text-gray-400 bg-white">Написать ответ...</div>
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white cursor-default" style="background:#2563eb;">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Чат 2 (свернут) -->
+      <div class="border border-gray-200 rounded-xl overflow-hidden anim-in">
+        <div class="flex items-center gap-2.5 px-3 py-2.5 cursor-default hover:bg-gray-50">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style="background:#7c3aed;">I</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex justify-between">
+              <span class="text-xs font-semibold text-gray-800">ivanov</span>
+              <span class="text-[10px] text-gray-400">1 час назад</span>
+            </div>
+            <div class="flex justify-between items-center mt-0.5">
+              <span class="text-[10px] text-gray-400">8 сообщений</span>
+              <span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold text-white" style="background:#dc2626;">2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Чат 3 (свернут, без новых) -->
+      <div class="border border-gray-200 rounded-xl overflow-hidden anim-in">
+        <div class="flex items-center gap-2.5 px-3 py-2.5 cursor-default hover:bg-gray-50">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style="background:#059669;">S</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex justify-between">
+              <span class="text-xs font-semibold text-gray-800">sergei</span>
+              <span class="text-[10px] text-gray-400">3 дня назад</span>
+            </div>
+            <div class="flex mt-0.5">
+              <span class="text-[10px] text-gray-400">2 сообщения · отвечено</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-[10px] text-gray-400 text-center py-1 anim-in">Всего чатов: 3 · Непрочитанных: 2</div>
+    </div>
+
+  </div><!-- /chat-scroll -->
+</div><!-- /chat-frame -->
+
+<!-- ===== СКРИПТ ПЕРЕКЛЮЧЕНИЯ ТАБОВ ===== -->
+<script>
+  const tabs = document.querySelectorAll('.big-tab');
+  const contents = {};
+
+  tabs.forEach(tab => {
+    const id = tab.dataset.tab;
+    contents[id] = document.getElementById('tab-' + id);
+    tab.addEventListener('click', function() {
+      // Убираем active со всех табов и контента
+      tabs.forEach(t => t.classList.remove('active'));
+      Object.values(contents).forEach(c => c.classList.remove('active'));
+      // Ставим active на текущий
+      this.classList.add('active');
+      contents[id].classList.add('active');
+      // Скролл вверх
+      document.getElementById('chatScroll').scrollTop = 0;
+    });
+  });
+</script>
+
+</body>
+</html>

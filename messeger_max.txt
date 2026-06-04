@@ -1,0 +1,99 @@
+Что такое MAX
+MAX — это российский национальный мессенджер от VK (ранее кодовое имя OneMe). Предустанавливается на все смартфоны в России. Аудитория 75+ млн зарегистрированных пользователей. Рекомендован Минцифры для госорганов и предприятий. Вход возможен через Госуслуги (ЕСИА).
+Как работает API
+Базовый URL: https://platform-api.max.ru
+Авторизация: Токен передаётся в заголовке Authorization: <токен> — без префикса Bearer. Получить токен можно через @masterbot внутри самого MAX.
+Лимит: 30 запросов/секунду.
+Два способа получать обновления:
+
+Long Polling (GET /updates)
+Webhook (POST /subscriptions)
+
+Основные методы API:
+МетодОписаниеGET /meИнформация о ботеPOST /messagesОтправка сообщенияPOST /messages/{id}РедактированиеDELETE /messages/{id}УдалениеPOST /uploadsЗагрузка файлов (до 4 ГБ)GET /chatsСписок групповых чатовGET /chats/{id}/membersУчастники чата
+Кнопки: до 210 на сообщение (30 рядов × 7). 5 типов: callback, link, message, request_contact, request_geo_location.
+Форматирование: Markdown и HTML.
+Официальные SDK: TypeScript, Python, Go, Java, PHP.
+Неофициальные библиотеки: есть для .NET (MaxApi.Net), Python (maxclientapi, python-max-client), а также MCP-сервер для подключения AI-клиентов (@woyax/mcp-max-messenger).
+Что именно вас интересует в работе с MAX? Например:
+
+Создание бота?
+Автоматизация отправки сообщений?
+Подключение AI к мессенджеру?
+
+Могу найти больше деталей по конкретному сценарию.
+Sources:
+
+GitHub - exp1azy/maxapinet
+@woyax/mcp-max-messenger (npm)
+GitHub - imsudoer/MaxLib
+GitHub - arsrus721/maxclientapi
+n8n AI chatbot workflow for MAX
+7days.ru — Создание бота в MAX
+DeepWiki — MAX Bot API Client Python
+You said: созадине боат в месседжересозадине боат в месседжереClaude responded: Вот полная инструкция по созданию бота в мессенджере MAX.Searched the webSearched the webВот полная инструкция по созданию бота в мессенджере MAX.
+Два способа создать бота
+Способ 1 — Через @MasterBot (простой, без кода)
+
+Откройте мессенджер MAX
+Найдите бота @MasterBot
+Отправьте команду /create
+Пройдите сценарий — тестовый бот будет создан сразу с токеном
+
+Способ 2 — Через dev.max.ru (официальный, для продакшена)
+
+Зайдите на dev.max.ru — Developer Portal от VK
+Войдите через VK ID
+Создайте новый проект — укажите название, описание, категорию
+После модерации перейдите в раздел «Чат-боты → Интеграция»
+Нажмите «Получить токен»
+
+Важно: ботов могут создавать только юрлица и ИП, зарегистрированные в РФ. На одну организацию — не более 5 ботов. Каждый проходит модерацию.
+
+Проверка токена
+bashcurl https://platform-api.max.ru/me \
+  -H "Authorization: ваш_токен"
+Токен передаётся без префикса Bearer, просто как есть.
+
+Простейший пример на Python
+pythonimport requests
+
+TOKEN = "ваш_токен"
+BASE = "https://platform-api.max.ru"
+
+# Отправка сообщения
+requests.post(f"{BASE}/messages", headers={
+    "Authorization": TOKEN,
+    "Content-Type": "application/json"
+}, json={
+    "chat_id": "id_чата",
+    "text": "Привет! Я бот в MAX!",
+    "format": "markdown"
+})
+
+Официальные SDK
+ЯзыкПакетTypeScript@maxhub/max-bot-apiGomax-bot-api-client-goJavamax-bot-sdkPythonmaxapiPHPmax-bot-api-client-phpRustmaxoxide
+
+Получение обновлений
+Long Polling — для разработки:
+pythonimport requests
+updates = requests.get(f"{BASE}/updates", headers=headers)
+print(updates.json())
+Webhook — для продакшена:
+pythonrequests.post(f"{BASE}/subscriptions", headers=headers, json={
+    "url": "https://ваш-сервер.com/webhook",
+    "events": ["message", "callback"]
+})
+
+И ещё один интересный момент
+Есть MCP-сервер @woyax/mcp-max-messenger — он позволяет подключать Claude Desktop, Cursor, n8n напрямую к MAX. Если хотите, чтобы ваш Claude работал с MAX-мессенджером напрямую — можно настроить его как инструмент.
+Вам какой вариант больше подходит? Если скажете, на каком языке пишете и какую задачу решаете, могу дать более конкретные примеры.
+Sources:
+
+7days.ru — Создание бота в MAX: пошаговый разбор
+Altcraft — MAX Bot tutorial
+npm — @woyax/mcp-max-messenger
+Packagist — PHPMaxBot
+GitHub — max-messenger/max-bot-sdk-java
+GitHub — mammothcoding/maxoxide
+npm — maxgraf

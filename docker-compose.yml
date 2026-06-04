@@ -1,0 +1,55 @@
+# ============================================
+# Docker Compose для локальной разработки
+# Запуск: docker-compose up -d
+# Остановка: docker-compose down
+# ============================================
+
+version: "3.9"
+
+services:
+
+  # --- PostgreSQL (база данных) ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: uc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-universal_chat}
+      POSTGRES_USER: ${POSTGRES_USER:-bot_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_please}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # --- Redis (кеш + FSM) ---
+  redis:
+    image: redis:7-alpine
+    container_name: uc_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # --- Сам бот (FastAPI) ---
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uc_app
+    restart: unless-stopped
+    ports:
+      - "${WS_PORT:-8080}:8080"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - .:/app
+
+volumes:
+  pg_data:
+  redis_data:

@@ -1,0 +1,45 @@
+# ============================================
+# Universal Chat Bot — зависимости
+# ============================================
+
+# --- Веб-фреймворк ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# --- Telegram адаптер ---
+aiogram>=3.4.0
+aiohttp-socks>=0.9.0  # SOCKS5 прокси для Telegram (РФ)
+
+# --- VK адаптер ---
+vkbottle>=4.4.1
+
+# --- База данных ---
+sqlalchemy[asyncio]>=2.0.25
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# --- Redis (кеш + FSM) ---
+redis>=5.0.0
+hiredis>=2.3.0
+
+# --- Валидация и конфиг ---
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# --- HTTP клиент (для связи с DLE) ---
+httpx>=0.26.0
+
+# --- Загрузка файлов (multipart) ---
+python-multipart>=0.0.9
+
+# --- WebSocket (чат-виджет) ---
+python-socketio>=5.11.0
+
+# --- Логирование ---
+loguru>=0.7.0
+
+# --- Безопасность ---
+python-jose[cryptography]>=3.3.0
+
+# --- Переменные окружения ---
+python-dotenv>=1.0.0

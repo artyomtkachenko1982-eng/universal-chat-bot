@@ -1,0 +1,8 @@
+import os
+
+# Старый путь:
+# widget_path = os.path.join(os.path.dirname(__file__), .., universal_chat, app, widgets, chat, index.html)
+
+# Новый — через realpath __file__ (разрешает симлинк) + поднимаемся на 1 уровень
+_base = os.path.dirname(os.path.realpath(__file__))
+widget_path = os.path.join(_base, widgets, chat, index.html)

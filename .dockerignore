@@ -1,0 +1,8 @@
+# Не копируем в Docker образ:
+__pycache__
+*.pyc
+.git
+.env
+venv/
+.venv/
+*.md
