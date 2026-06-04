@@ -1,1 +1,0 @@
-{"cmd": "cat > /tmp/del_rates.py << 'PYEOF'\nimport redis\nr = redis.Redis.from_url('redis://redis:6379/0')\nkeys = r.keys('rate:*')\nfor k in keys:\n    r.delete(k)\nprint(f'Deleted {len(keys)} rate keys')\nPYEOF\npython3 /tmp/del_rates.py", "token": "d8p0BxQ38oxGkrN2Ab918qj7ph1hDbxP"}
