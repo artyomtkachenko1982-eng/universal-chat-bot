@@ -716,6 +716,57 @@ async def handle_get_chat_list(admin_dle_id: int) -> dict:
             "new_count": new_count,
         })
 
+
+    # === Анонимные чаты (dle_user_id IS NULL) ===
+    async with async_session() as session:
+        anon_stmt = (
+            select(
+                AdminMessage.platform_user_id,
+                func.max(
+                    case(
+                        (AdminMessage.sender_type == "user", AdminMessage.user_name),
+                        else_=None,
+                    )
+                ).label("user_name"),
+                func.max(AdminMessage.created_at).label("last_at"),
+                func.count().label("total"),
+            )
+            .where(AdminMessage.dle_user_id.is_(None))
+            .where(AdminMessage.platform_user_id.isnot(None))
+            .group_by(AdminMessage.platform_user_id)
+            .order_by(func.max(AdminMessage.created_at).desc())
+            .limit(20)
+        )
+        anon_rows = (await session.execute(anon_stmt)).all()
+
+    for r in anon_rows:
+        if not r.platform_user_id:
+            continue
+        # Считаем непрочитанные от юзера
+        new_count_stmt = (
+            select(func.count())
+            .select_from(AdminMessage)
+            .where(
+                AdminMessage.platform_user_id == r.platform_user_id,
+                AdminMessage.dle_user_id.is_(None),
+                AdminMessage.sender_type == "user",
+                AdminMessage.status == "new",
+            )
+        )
+        new_count = (await session.execute(new_count_stmt)).scalar() or 0
+
+        chats.append({
+            "dle_user_id": 0,
+            "platform_user_id": r.platform_user_id,
+            "user_name": (r.user_name or "Гость") + " (аноним)",
+            "last_at": r.last_at.isoformat(),
+            "time_ago": _time_ago(r.last_at),
+            "total_messages": r.total,
+            "has_new": new_count > 0,
+            "new_count": new_count,
+            "is_anonymous": True,
+        })
+
     return {"chats": chats, "total": len(chats)}
 
 
