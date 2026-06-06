@@ -581,10 +581,12 @@ async def api_my_stats(dle_user_id: int = 0):
 
 
 @app.get("/api/chat")
-async def api_get_chat(dle_user_id: int = 0):
-    """Вся переписка юзера с админом."""
+async def api_get_chat(dle_user_id: int = 0, platform_user_id: str = ""):
+    """Вся переписка юзера или анонима с админом."""
+    if platform_user_id:
+        return await handle_get_chat(0, platform_user_id)
     if not dle_user_id:
-        return {"error": "Нужен dle_user_id"}
+        return {"error": "Нужен dle_user_id или platform_user_id"}
     return await handle_get_chat(dle_user_id)
 
 
@@ -601,12 +603,15 @@ async def api_mark_chat_read(request: Request):
 
 @app.post("/api/chat/delete")
 async def api_delete_chat(request: Request):
-    """Удалить все сообщения юзера из чата с админом."""
+    """Удалить все сообщения юзера или анонима из чата с админом."""
     import json
     body = await request.json()
     dle_user_id = body.get("dle_user_id", 0)
+    platform_user_id = body.get("platform_user_id", "")
+    if platform_user_id:
+        return await handle_delete_chat(0, platform_user_id)
     if not dle_user_id:
-        return {"error": "Нужен dle_user_id"}
+        return {"error": "Нужен dle_user_id или platform_user_id"}
     return await handle_delete_chat(dle_user_id)
 
 

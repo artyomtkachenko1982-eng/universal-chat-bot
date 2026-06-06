@@ -157,23 +157,26 @@
 			const res = await callApi("/api/chat/archive", { dle_user_id: parseInt(chatId) || 0 });
 			if (!res.error) {
 				// Убираем чат из списка
-				setDeletedChats(function(prev) { return prev.concat([chatId]); });
+				setDeletedChats(function(prev) { return prev.concat([ud]); });
 				// Обновляем счётчики если админ
 				if (isAdmin) loadAdminCounts();
 			}
 		} catch(e) { console.error("Ошибка архивации чата:", e); }
 	}
-	function handleDeleteChat(chatId) {
+	function handleDeleteChat(chatId, platformUserId) {
 		setSwipedChatId(null);
-		setDeleteConfirmId(chatId);
+		setDeleteConfirmId({chatId: chatId, platformUserId: platformUserId});
 	}
 	async function confirmDelete() {
-		var chatId = deleteConfirmId;
+		var chatId = deleteConfirmId.chatId;
+		var platformUserId = deleteConfirmId.platformUserId;
 		setDeleteConfirmId(null);
 		try {
-			const res = await callApi("/api/chat/delete", { dle_user_id: parseInt(chatId) || 0 });
+			const ud = platformUserId || "u" + chatId;
+			const params = platformUserId ? { platform_user_id: platformUserId } : { dle_user_id: parseInt(chatId) || 0 };
+			const res = await callApi("/api/chat/delete", params);
 			if (!res.error) {
-				setDeletedChats(function(prev) { return prev.concat([chatId]); });
+				setDeletedChats(function(prev) { return prev.concat([ud]); });
 				if (isAdmin) loadAdminCounts();
 			}
 		} catch(e) { console.error("Ошибка удаления чата:", e); }
@@ -1654,12 +1657,13 @@
       }
 
       // Открыть чат с юзером (для админа)
-      async function openAdminChat(dleUserId, userName) {
-        setChatUser({ id: dleUserId, name: userName });
+      async function openAdminChat(dleUserId, userName, platformUserId) {
+        setChatUser({ id: dleUserId, name: userName, platform_user_id: platformUserId, key: (platformUserId || "u" + dleUserId) });
         setChatMessages([]);
         setChatInput("");
         setLoading(true);
-        const chat = await callApi("/api/chat", { dle_user_id: dleUserId });
+        const params = platformUserId ? { platform_user_id: platformUserId } : { dle_user_id: dleUserId };
+        const chat = await callApi("/api/chat", params);
         setLoading(false);
         if (chat.messages) setChatMessages(chat.messages);
       }
@@ -1672,7 +1676,7 @@
         setLoading(true);
         const result = await callApi("/api/admin/chat/reply", {
           admin_dle_id: user.id,
-          user_dle_id: chatUser.id,
+          user_dle_id: chatUser.platform_user_id ? 0 : chatUser.id, platform_user_id: chatUser.platform_user_id || "",
           text: text,
         });
         setLoading(false);
@@ -2746,31 +2750,32 @@
               🗂 В архив
             </button>
           </div>
-          {chatUserList.filter(c => deletedChats.indexOf(c.dle_user_id) < 0).map(chat => {
-            const isExpanded = chatUser && chatUser.id === chat.dle_user_id;
+          {chatUserList.filter(c => deletedChats.indexOf(c.platform_user_id || "u" + c.dle_user_id) < 0).map(chat => {
+            const chatKey = chat.platform_user_id || "u" + chat.dle_user_id;
+            const isExpanded = chatUser && chatUser.key === chatKey;
             const isOnline = userOnline[chat.dle_user_id]?.online;
             return (
-              <div key={chat.dle_user_id} className="relative overflow-hidden border-b border-gray-100">
+              <div key={chatKey} className="relative overflow-hidden border-b border-gray-100">
                 {/* Кнопки свайпа */}
-                <div className={"absolute inset-y-0 right-0 flex items-stretch transition-opacity duration-200 " + (swipedChatId === "admin_" + chat.dle_user_id ? "opacity-100" : "opacity-0")}>
+                <div className={"absolute inset-y-0 right-0 flex items-stretch transition-opacity duration-200 " + (swipedChatId === "admin_" + chatKey ? "opacity-100" : "opacity-0")}>
                   <button onClick={() => handleArchiveChat(chat.dle_user_id)}
                     className="bg-blue-600 text-white w-16 text-[10px] font-medium flex items-center justify-center leading-tight px-1">🗂<br/>Архив</button>
-                  <button onClick={() => handleDeleteChat(chat.dle_user_id)}
+                  <button onClick={() => handleDeleteChat(chat.dle_user_id, chat.platform_user_id)}
                     className="bg-red-500 text-white w-16 text-[10px] font-medium flex items-center justify-center leading-tight px-1">🗑<br/>Удалить</button>
                 </div>
                 <div
                   onClick={() => {
-                    if (swipedChatId === "admin_" + chat.dle_user_id) { setSwipedChatId(null); return; }
+                    if (swipedChatId === "admin_" + chatKey) { setSwipedChatId(null); return; }
                     if (swipedChatId) { setSwipedChatId(null); return; }
-                    if (isExpanded) { setChatUser(null); setChatMessages([]); } else { openAdminChat(chat.dle_user_id, chat.user_name); }
+                    if (isExpanded) { setChatUser(null); setChatMessages([]); } else { openAdminChat(chat.dle_user_id, chat.user_name, chat.platform_user_id); }
                   }}
                   onTouchStart={e => { swipeStartX.current = e.touches[0].clientX; }}
                   onTouchMove={e => {
                     var diff = swipeStartX.current - e.touches[0].clientX;
                     if (diff > 40) setSwipedChatId("admin_" + chat.dle_user_id);
-                    if (diff < -40 && swipedChatId === "admin_" + chat.dle_user_id) setSwipedChatId(null);
+                    if (diff < -40 && swipedChatId === "admin_" + chatKey) setSwipedChatId(null);
                   }}
-                  className={"flex items-center gap-2.5 px-2 py-2.5 cursor-pointer transition-colors hover:bg-gray-50 transition-transform duration-200 " + (isExpanded ? "bg-blue-50/30 border-l-2 border-blue-500" : "") + " " + (swipedChatId === "admin_" + chat.dle_user_id ? "-translate-x-32" : "translate-x-0")}
+                  className={"flex items-center gap-2.5 px-2 py-2.5 cursor-pointer transition-colors hover:bg-gray-50 transition-transform duration-200 " + (isExpanded ? "bg-blue-50/30 border-l-2 border-blue-500" : "") + " " + (swipedChatId === "admin_" + chatKey ? "-translate-x-32" : "translate-x-0")}
                 >
                   <div className="avatar-wrapper flex-shrink-0">
                     <div className={"avatar-small " + (isExpanded ? "ring-2 ring-blue-400" : "")}>{chat.user_name.charAt(0).toUpperCase()}</div>
@@ -3527,19 +3532,20 @@
                         ) : (
                           <div className="space-y-2">
                             {archiveChats.map(chat => {
-                              const isExpanded = chatUser && chatUser.id === chat.dle_user_id;
+                              const chatKey = chat.platform_user_id || "u" + chat.dle_user_id;
+                              const isExpanded = chatUser && chatUser.key === chatKey;
                               return (
-                              <div key={chat.dle_user_id} className="rounded-xl overflow-hidden shadow-sm border border-gray-200 bg-white">
+                              <div key={chatKey} className="rounded-xl overflow-hidden shadow-sm border border-gray-200 bg-white">
                                 <div className="p-3">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer" onClick={async () => {
                                       if (isExpanded) { setChatUser(null); setChatMessages([]); return; }
                                       // Загружаем сообщения чата
-                                      setChatUser({ id: chat.dle_user_id, name: chat.user_name || "Без имени" });
+                                      setChatUser({ id: chat.dle_user_id, name: chat.user_name || "Без имени", platform_user_id: chat.platform_user_id, key: chatKey });
                                       setChatMessages([]);
                                       setChatInput("");
                                       setLoading(true);
-                                      const chatData = await callApi("/api/chat", { dle_user_id: chat.dle_user_id });
+                                      const chatData = await callApi("/api/chat", chat.platform_user_id ? { platform_user_id: chat.platform_user_id } : { dle_user_id: chat.dle_user_id });
                                       setLoading(false);
                                       if (chatData.messages) setChatMessages(chatData.messages);
                                     }}>

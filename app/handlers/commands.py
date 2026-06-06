@@ -399,23 +399,22 @@ async def handle_admin_message(
     }
 
 
-async def handle_get_chat(dle_user_id: int) -> dict:
+async def handle_get_chat(dle_user_id: int = 0, platform_user_id: str = "") -> dict:
     """
-    Возвращает всю переписку юзера с админом.
-    Сообщения отсортированы по времени (старые → новые).
+    Возвращает всю переписку юзера или анонима с админом.
     """
-    if not dle_user_id:
-        return {"error": "Нужен dle_user_id", "messages": []}
+    if not dle_user_id and not platform_user_id:
+        return {"error": "Нужен dle_user_id или platform_user_id", "messages": []}
 
     async with async_session() as session:
         from sqlalchemy import select, update
 
-        stmt = (
-            select(AdminMessage)
-            .where(AdminMessage.dle_user_id == dle_user_id)
-            .order_by(AdminMessage.created_at.asc())
-            .limit(100)
-        )
+        stmt = select(AdminMessage)
+        if platform_user_id:
+            stmt = stmt.where(AdminMessage.platform_user_id == platform_user_id)
+        else:
+            stmt = stmt.where(AdminMessage.dle_user_id == dle_user_id)
+        stmt = stmt.order_by(AdminMessage.created_at.asc()).limit(100)
         rows = (await session.execute(stmt)).scalars().all()
 
     messages = []
@@ -455,12 +454,12 @@ async def handle_mark_chat_read(dle_user_id: int) -> dict:
     return {"status": "ok"}
 
 
-async def handle_delete_chat(dle_user_id: int) -> dict:
+async def handle_delete_chat(dle_user_id: int = 0, platform_user_id: str = "") -> dict:
     """
-    Удаляет все сообщения пользователя из чата с админом.
+    Удаляет все сообщения пользователя или анонима из чата с админом.
     """
-    if not dle_user_id:
-        return {"error": "Нужен dle_user_id"}
+    if not dle_user_id and not platform_user_id:
+        return {"error": "Нужен dle_user_id или platform_user_id"}
 
     async with async_session() as session:
         from sqlalchemy import delete, select
@@ -1649,10 +1648,13 @@ async def handle_my_requests(dle_user_id: int) -> dict:
         # Сообщения админу
         stmt = (
             select(AdminMessage)
-            .where(AdminMessage.dle_user_id == dle_user_id)
             .order_by(AdminMessage.created_at.desc())
             .limit(50)
         )
+        if platform_user_id:
+            stmt = stmt.where(AdminMessage.platform_user_id == platform_user_id)
+        else:
+            stmt = stmt.where(AdminMessage.dle_user_id == dle_user_id)
         for msg in (await session.execute(stmt)).scalars().all():
             messages.append({
                 "id": msg.id,
