@@ -3407,7 +3407,7 @@
                             if (adminSection === "archive") return archiveFilterType === "all" || item.type === archiveFilterType;
                             return true;
                           });
-                          if (filtered.length === 0) {
+                          if (filtered.length === 0 && adminSection !== "archive") {
                             return <div className="text-center text-gray-400 text-xs py-6">📭 Нет элементов в этом разделе</div>;
                           }
                           const perPage = 5;
