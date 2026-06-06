@@ -547,7 +547,7 @@
               adminLoadTimerRef.current = null;
               // Повторная проверка: не переключился ли админ в другую комнату за 50 мс
               if (activeRoomRef.current !== targetRoom) return;
-              await loadAdminSection(section, silent);
+              if (section !== 'archive') await loadAdminSection(section, silent);
             }, 50);
             return;
           }
