@@ -775,6 +775,18 @@ async def api_anonymous_send(request: Request):
                     )
                     session.add(ai_msg)
                     await session.commit()
+
+                    # Помечаем все user-сообщения анонима как answered
+                    from sqlalchemy import update
+                    stmt = (
+                        update(AdminMessage)
+                        .where(AdminMessage.platform_user_id == platform_user_id)
+                        .where(AdminMessage.sender_type == "user")
+                        .where(AdminMessage.status == "new")
+                        .values(status="answered", answered_at=datetime.utcnow())
+                    )
+                    await session.execute(stmt)
+                    await session.commit()
         except Exception as e:
             log.error(f"AI agent error: {e}")
 
