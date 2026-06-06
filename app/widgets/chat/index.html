@@ -2772,7 +2772,7 @@
                   onTouchStart={e => { swipeStartX.current = e.touches[0].clientX; }}
                   onTouchMove={e => {
                     var diff = swipeStartX.current - e.touches[0].clientX;
-                    if (diff > 40) setSwipedChatId("admin_" + chat.dle_user_id);
+                    if (diff > 40) setSwipedChatId("admin_" + chatKey);
                     if (diff < -40 && swipedChatId === "admin_" + chatKey) setSwipedChatId(null);
                   }}
                   className={"flex items-center gap-2.5 px-2 py-2.5 cursor-pointer transition-colors hover:bg-gray-50 transition-transform duration-200 " + (isExpanded ? "bg-blue-50/30 border-l-2 border-blue-500" : "") + " " + (swipedChatId === "admin_" + chatKey ? "-translate-x-32" : "translate-x-0")}
