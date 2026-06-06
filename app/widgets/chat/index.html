@@ -1668,6 +1668,13 @@
         if (chat.messages) setChatMessages(chat.messages);
         // Помечаем сообщения как прочитанные
         callApi("/api/chat/read", platformUserId ? { platform_user_id: platformUserId } : { dle_user_id: dleUserId }).catch(() => {});
+        // Обновляем has_new в списке чатов локально
+        const key = platformUserId || "u" + dleUserId;
+        setChatUserList(prev => prev.map(c => {
+          const ck = c.platform_user_id || "u" + c.dle_user_id;
+          if (ck === key) return { ...c, has_new: false, new_count: 0 };
+          return c;
+        }));
       }
 
       // Админ отправляет ответ в чат
