@@ -3409,9 +3409,7 @@
                         {/* Фильтр по типу (только в разделе Реклама) */}
                         {adminSection === "ads" && (
                           <div className="flex gap-1 flex-wrap">
-                            <button onClick={() => openPriceEditor()}
-                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-yellow-50 border border-yellow-200 text-yellow-700 hover:bg-yellow-100">💰 Цены</button>
-                            {[
+                                                        {[
                               { key: "all", label: "Все" },
                               { key: "feed", label: "📢 Объявления" },
                               { key: "banner", label: "🎯 Баннеры" },
