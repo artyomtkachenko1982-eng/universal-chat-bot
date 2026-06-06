@@ -681,11 +681,17 @@ async def api_admin_chat_reply(request: Request):
     return await handle_admin_chat_reply(admin_id, user_id, text)
 
 
+system_prompt = 'Ты - ИИ-агент сайта turbinist.ru. Ты отвечаешь анонимным посетителям сайта.\nТВОИ ТЕМЫ (не путай их):\n1. Доступ к файлам: тарифы Временщик 1д/195руб, 5д/455руб, VIP 1год/2550руб, Премиум навсегда/4990руб\n2. Реклама: объявления от 500руб, закрепление 550руб, статья от 3500руб, баннеры 2000-3000руб/мес\n3. Техническая документация по ГПА, ГТУ, компрессорам - доступ через тарифы\n\nПРАВИЛА:\n- Отвечай кратко (2-4 предложения)\n- Не выдумывай характеристики, не обещай того чего нет\n- Если вопрос сложный - предложи написать админу\n- Не выходи за темы сайта\n- Будь дружелюбным, называй пользователя по имени\n- Мягко предлагай регистрацию (имя+email)\n'
+
 @app.post("/api/chat/anonymous-send")
 async def api_anonymous_send(request: Request):
-    """Аноним отправляет сообщение (без регистрации)."""
+    """Аноним отправляет сообщение - ИИ-агент отвечает (DeepSeek)."""
     from app.models.database import AdminMessage
     from app.core.database import async_session
+    from app.core.config import settings
+    from sqlalchemy import select
+    import logging
+    log = logging.getLogger("ai_agent")
 
     body = await request.json()
     platform_user_id = body.get("platform_user_id", "")
@@ -693,6 +699,8 @@ async def api_anonymous_send(request: Request):
     text = body.get("text", "").strip()
     if not text:
         return {"error": "Пустое сообщение"}
+
+    # Сохраняем сообщение юзера
     async with async_session() as session:
         msg = AdminMessage(
             platform="web",
@@ -706,7 +714,66 @@ async def api_anonymous_send(request: Request):
         )
         session.add(msg)
         await session.commit()
-    return {"status": "ok", "id": msg.id}
+
+    # === ИИ-агент отвечает ===
+    ai_reply = None
+    if settings.DEEPSEEK_API_KEY:
+        try:
+            # Собираем историю диалога (последние 20 сообщений)
+            async with async_session() as session:
+                stmt = (
+                    select(AdminMessage)
+                    .where(AdminMessage.platform_user_id == platform_user_id)
+                    .order_by(AdminMessage.created_at.asc())
+                    .limit(20)
+                )
+                rows = (await session.execute(stmt)).scalars().all()
+
+            messages = [{"role": "system", "content": system_prompt}]
+            for r in rows:
+                role = "user" if r.sender_type == "user" else "assistant"
+                messages.append({"role": role, "content": r.text})
+
+            # Запрос к DeepSeek
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    settings.DEEPSEEK_API_URL,
+                    headers={
+                        "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "deepseek-chat",
+                        "messages": messages,
+                        "temperature": 0.7,
+                        "max_tokens": 300,
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    ai_reply = data["choices"][0]["message"]["content"].strip()
+                else:
+                    log.error(f"DeepSeek API error: {resp.status_code}")
+
+            # Сохраняем ответ ИИ
+            if ai_reply:
+                async with async_session() as session:
+                    ai_msg = AdminMessage(
+                        platform="web",
+                        platform_user_id=platform_user_id,
+                        dle_user_id=None,
+                        user_name="ИИ-агент",
+                        sender_type="admin",
+                        topic="answer",
+                        text=ai_reply,
+                        status="sent",
+                    )
+                    session.add(ai_msg)
+                    await session.commit()
+        except Exception as e:
+            log.error(f"AI agent error: {e}")
+
+    return {"status": "ok", "id": msg.id, "ai_reply": ai_reply}
 
 
 @app.get("/api/chat/anonymous-get")
