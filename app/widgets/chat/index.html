@@ -2468,6 +2468,15 @@
           }
 
           // Список заявок (НЕ «Сообщения» и НЕ когда выбран элемент) — кнопки внизу
+          // Сообщения — кнопка на главную
+          if (adminSection === "messages" && !adminSelected) {
+            return (
+              <div className="flex gap-2">
+                <button onClick={() => { switchRoom("main"); setStep("main"); setChatMessages([]); setChatInput(""); }}
+                  className="flex-1 bg-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm hover:bg-gray-300">← На главную</button>
+              </div>
+            );
+          }
           if (adminSection !== "messages" && !adminSelected) {
           // Цены — кнопка назад к списку
           if (adminSection === "prices") {
