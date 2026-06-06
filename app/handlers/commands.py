@@ -463,13 +463,24 @@ async def handle_delete_chat(dle_user_id: int) -> dict:
         return {"error": "Нужен dle_user_id"}
 
     async with async_session() as session:
-        from sqlalchemy import delete
+        from sqlalchemy import delete, select
+        from app.models.database import BotUser
 
-        stmt = (
-            delete(AdminMessage)
-            .where(AdminMessage.dle_user_id == dle_user_id)
-        )
+        # Удаляем все сообщения по dle_user_id
+        stmt = delete(AdminMessage).where(AdminMessage.dle_user_id == dle_user_id)
         await session.execute(stmt)
+
+        # Удаляем анонимные сообщения от тех же платформ (dle_user_id=None)
+        stmt_bu = select(BotUser).where(BotUser.dle_user_id == dle_user_id)
+        bot_users = (await session.execute(stmt_bu)).scalars().all()
+        for bu in bot_users:
+            stmt_anon = delete(AdminMessage).where(
+                AdminMessage.dle_user_id == None,
+                AdminMessage.platform == bu.platform,
+                AdminMessage.platform_user_id == bu.platform_user_id
+            )
+            await session.execute(stmt_anon)
+
         await session.commit()
 
     return {"status": "ok"}
@@ -1112,7 +1123,7 @@ async def _get_admin_counts() -> dict:
 
         new_ads = (await cnt(AdRequest, AdRequest.status.in_(["new", "in_progress"]))).scalar() or 0
         new_news = (await cnt(NewsSuggestion, NewsSuggestion.status.in_(["new", "in_progress"]))).scalar() or 0
-        new_messages = (await cnt(AdminMessage, AdminMessage.sender_type == "user", AdminMessage.status == "new")).scalar() or 0
+        new_messages = (await cnt(AdminMessage, AdminMessage.sender_type == "user", AdminMessage.status == "new", AdminMessage.dle_user_id != None)).scalar() or 0
 
         archive_ads = (await cnt(AdRequest, AdRequest.status.in_(["approved", "rejected", "done"]))).scalar() or 0
         archive_news = (await cnt(NewsSuggestion, NewsSuggestion.status.in_(["approved", "rejected"]))).scalar() or 0

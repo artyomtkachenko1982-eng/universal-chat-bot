@@ -230,6 +230,7 @@
 
       const messagesEnd = useRef(null);
       const adminLoadTimerRef = useRef(null);  // ID таймера loadAdminSection — чтобы отменять старые
+      const archiveCacheRef = useRef(null);    // кеш заявок архива — сбрасывается при выходе из архива
       const isAdmin = user && user.id === ADMIN_ID;
 
       // 🎭 Фейковые чаты будут тут после реализации юзер-юзер
@@ -311,7 +312,7 @@
               })();
               (async () => {
                 const platData = await callApi("/api/admin/bot-users", { dle_user_id: u.id });
-                if (!platData.error) setPlatformStats(platData);
+                if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); }
               })();
             } else {
               // 👤 Обычный юзер: загружаем статистику для карточек и приветствия
@@ -480,6 +481,10 @@
       // Вход в комнату (с инициализацией если пустая)
       let _dbgEnterC = 0;
       async function enterRoom(room) {
+        // Сбрасываем кеш архива при выходе из него
+        if (activeRoomRef.current === "archive" && room !== "archive") {
+          archiveCacheRef.current = null;
+        }
         _dbgEnterC++;
         const alreadyHere = room === activeRoomRef.current;
         const msgsCount = roomMessagesRef.current[room]?.length || 0;
@@ -517,13 +522,15 @@
             const countsData = await callApi("/api/admin/panel", { dle_user_id: user.id, section: "ads", page: 1, limit: 1 });
             if (countsData.counts) setAdminCounts(countsData.counts);
           })();
-          // Загружаем статистику юзеров по платформам
-          (async () => {
-            const platData = await callApi("/api/admin/bot-users", { dle_user_id: user.id });
-            if (!platData.error) setPlatformStats(platData);
-          })();
-          return;
-        }
+
+          // Обновляем platformStats при входе на главную (не чаще 1 раза в 5 мин)
+          if (!window.__platformStatsTime || Date.now() - window.__platformStatsTime > 300000) {
+            (async () => {
+              const platData = await callApi("/api/admin/bot-users", { dle_user_id: user.id });
+              if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); }
+            })();
+          }
+                  }
 
         // Админ: всегда загружаем свежие данные при входе в НЕ-главную комнату
         if (isAdmin) {
@@ -847,12 +854,7 @@
                   setAdminCounts(welcome);  // 🔢 Сразу показываем цифры в дашборде
                 }
               } catch (e) {}
-              // Загружаем статистику юзеров по платформам
-              try {
-                const platData = await callApi("/api/admin/bot-users", { dle_user_id: userId });
-                if (!platData.error) setPlatformStats(platData);
-              } catch (e) {}
-            } else {
+} else {
               // Для обычного юзера — приветствие и уведомления
               let greeting = `👋 Привет, ${result.dle_username}!\n\nДобро пожаловать в чат-бот turbinist.ru`;
 
@@ -1481,7 +1483,18 @@
           return;
         }
 
-        const data = await callApi("/api/admin/panel", { dle_user_id: user.id, section, page: 1, limit: 999 });
+        // Кеш архива: если данные уже загружены — не грузим заново
+        if (section === "archive" && archiveCacheRef.current && archiveCacheRef.current.count > 0) {
+          setLoading(false);
+          if (roomSectionMap[activeRoomRef.current] !== section) return;
+          setAdminSection(section);
+          setAdminItems(archiveCacheRef.current.items);
+          setAdminCounts(archiveCacheRef.current.counts);
+          setAdminListPage(1);
+          return;
+        }
+
+                const data = await callApi("/api/admin/panel", { dle_user_id: user.id, section, page: 1, limit: 999 });
         setLoading(false);
 
         // 🔒 Повторная проверка: за время API-запроса комната могла смениться
@@ -1495,6 +1508,7 @@
         // ✅ adminSection ставим ТОЛЬКО после успешного ответа и проверки комнаты
         setAdminSection(section);
         setAdminItems(data.items || []);
+        if (section === "archive") { archiveCacheRef.current = { items: data.items || [], counts: data.counts, count: (data.items || []).length }; }
         setAdminCounts(data.counts);
         setAdminListPage(1);  // сбрасываем страницу при загрузке
       }
@@ -1583,6 +1597,7 @@
         addBotMessage(result.message || "✅ Подтверждено!");
         setAdminSelected(null);
         setAdminShowCorrection(false);
+        archiveCacheRef.current = null;
         loadAdminSection(adminSection);
       }
 
@@ -1595,6 +1610,7 @@
         setLoading(false);
         addBotMessage(result.message || "❌ Отклонено!");
         setAdminSelected(null);
+        archiveCacheRef.current = null;
         loadAdminSection(adminSection);
       }
 
@@ -1607,6 +1623,7 @@
         setLoading(false);
         addBotMessage(result.message || "✅ Утверждено!");
         setAdminSelected(null);
+        archiveCacheRef.current = null;
         loadAdminSection(adminSection);
       }
 
@@ -1619,6 +1636,7 @@
         setLoading(false);
         addBotMessage(result.message || "❌ Отклонено!");
         setAdminSelected(null);
+        archiveCacheRef.current = null;
         loadAdminSection(adminSection);
       }
 
@@ -2624,11 +2642,7 @@
               const c = await callApi("/api/admin/panel", { dle_user_id: user.id, section: "ads", page: 1, limit: 1 });
               if (c.counts) setAdminCounts(c.counts);
             })();
-            (async () => {
-              const p = await callApi("/api/admin/bot-users", { dle_user_id: user.id });
-              if (!p.error) setPlatformStats(p);
-            })();
-          } else {
+                      } else {
             addBotMessage("🔄 Данные обновлены. 👋");
           }
         } else {
@@ -2873,7 +2887,7 @@
                     { key: "profile", label: "👤", title: "Профиль" },
                     { key: "advertise", label: "📢", title: "Реклама" },
                     { key: "news", label: "📰", title: "Новости" },
-                    { key: "admin_message", label: "💬", title: "Сообщения" },
+                    { key: "admin_message", label: "💬", title: "Чаты" },
                     { key: "admin_stats", label: "📊", title: "Статистика" },
                     { key: "archive", label: "🗂", title: "Архив" },
                   ]
@@ -3231,13 +3245,7 @@
                             <div className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide">🗂 Архив</div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-1.5 mt-1.5">
-                          <div onClick={() => enterRoom("admin_stats")} className="rounded-xl p-2.5 text-center cursor-pointer hover:shadow-md transition-shadow border border-gray-200 bg-white">
-                            <div className="text-lg font-extrabold text-green-600">📊</div>
-                            <div className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide">Статистика</div>
-                          </div>
-                        </div>
-                        <div className="text-[10px] text-gray-400 text-center pb-1">Выберите раздел сверху 👆 или в меню ↓</div>
+
                         {platformStats && (
                           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
                             <div className="text-[10px] text-gray-500 font-semibold mb-1.5">🌐 Пользователи по платформам</div>
@@ -3388,7 +3396,7 @@
                               { key: "all", label: "Все" },
                               { key: "ad", label: "📢 Реклама" },
                               { key: "news", label: "📰 Новости" },
-                              { key: "message", label: "💬 Сообщения" },
+
                               { key: "chat", label: "🗂️💬 Чаты" },
                             ].map(f => (
                               <button key={f.key} onClick={() => { 
