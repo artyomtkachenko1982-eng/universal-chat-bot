@@ -535,7 +535,7 @@
 
         // Админ: всегда загружаем свежие данные при входе в НЕ-главную комнату
         if (isAdmin) {
-          const sectionMap = { advertise: "ads", news: "news", admin_message: "messages", admin_stats: "stats", archive: "archive" };
+          const sectionMap = { advertise: "ads", news: "news", admin_message: "messages", admin_stats: "stats", archive: "archive", prices: "prices" };
           const section = sectionMap[room];
           if (section) {
             // Показываем правильную секцию сразу (UI), данные загрузятся через loadAdminSection
@@ -555,7 +555,19 @@
               adminLoadTimerRef.current = null;
               // Повторная проверка: не переключился ли админ в другую комнату за 50 мс
               if (activeRoomRef.current !== targetRoom) return;
-              await loadAdminSection(section, silent);
+              if (section === "prices") {
+                // Загружаем цены
+                setPriceSaveStatus(null);
+                setPriceLoading(true);
+                const data = await callApi("/api/prices", {});
+                setPriceLoading(false);
+                if (data.prices) {
+                  setPriceData(data.prices);
+                  setPriceEdits({});
+                }
+              } else {
+                await loadAdminSection(section, silent);
+              }
             }, 50);
             return;
           }
@@ -1431,7 +1443,7 @@
       // Загрузить раздел (silent — без сообщений в чат, для перезагрузки)
       async function loadAdminSection(section, silent = false, filterType = null) {
         // 🔒 Защита №1: не загружать, если комната не соответствует секции
-        const roomSectionMap = { advertise: "ads", news: "news", admin_message: "messages", admin_stats: "stats", archive: "archive" };
+        const roomSectionMap = { advertise: "ads", news: "news", admin_message: "messages", admin_stats: "stats", archive: "archive", prices: "prices" };
         if (roomSectionMap[activeRoomRef.current] !== section) return;
 
         // 📌 Захватываем комнату ДО асинхронных вызовов
@@ -2887,6 +2899,7 @@
                     { key: "main", label: "🏠", title: "Главная" },
                     { key: "profile", label: "👤", title: "Профиль" },
                     { key: "advertise", label: "📢", title: "Реклама" },
+                    { key: "prices", label: "💰", title: "Цены" },
                     { key: "news", label: "📰", title: "Новости" },
                     { key: "admin_message", label: "💬", title: "Чаты" },
                     { key: "admin_stats", label: "📊", title: "Статистика" },
@@ -2896,6 +2909,7 @@
                     { key: "main", label: "🏠", title: "Главная" },
                     { key: "profile", label: "👤", title: "Профиль" },
                     { key: "advertise", label: "📢", title: "Реклама" },
+                    { key: "prices", label: "💰", title: "Цены" },
                     { key: "news", label: "📰", title: "Новости" },
                     { key: "admin_message", label: "💬", title: "Админу" },
                     { key: "stats", label: "📊", title: "Статистика" },
