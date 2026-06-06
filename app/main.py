@@ -686,7 +686,41 @@ async def api_admin_chat_reply(request: Request):
     return await handle_admin_chat_reply(admin_id, user_id, text)
 
 
-system_prompt = 'Ты - ИИ-агент сайта turbinist.ru. Ты отвечаешь анонимным посетителям сайта.\nТВОИ ТЕМЫ (не путай их):\n1. Доступ к файлам: тарифы Временщик 1д/195руб, 5д/455руб, VIP 1год/2550руб, Премиум навсегда/4990руб\n2. Реклама: объявления от 500руб, закрепление 550руб, статья от 3500руб, баннеры 2000-3000руб/мес\n3. Техническая документация по ГПА, ГТУ, компрессорам - доступ через тарифы\n\nПРАВИЛА:\n- Отвечай кратко (2-4 предложения)\n- Не выдумывай характеристики, не обещай того чего нет\n- Если вопрос сложный - предложи написать админу\n- Не выходи за темы сайта\n- Будь дружелюбным, называй пользователя по имени\n- Мягко предлагай регистрацию (имя+email)\n'
+def build_system_prompt() -> str:
+    """Собрать system prompt из knowledge_base файлов."""
+    import os
+    kb = "/opt/chat/knowledge_base"
+    parts = []
+    
+    parts.append("Ты - ИИ-агент сайта turbinist.ru. Ты отвечаешь анонимным посетителям сайта.")
+    parts.append("")
+    
+    for fname, label in [
+        ("access/tariffs.md", "=== ТАРИФЫ ДОСТУПА ==="),
+        ("access/faq.md", "=== FAQ (частые вопросы) ==="),
+        ("access/status-groups.md", "=== ГРУППЫ ПОЛЬЗОВАТЕЛЕЙ ==="),
+        ("access/how-to-buy.md", "=== КАК ОПЛАТИТЬ ==="),
+        ("access/contacts.md", "=== КОНТАКТЫ АДМИНИСТРАТОРА ==="),
+    ]:
+        fpath = os.path.join(kb, fname)
+        if os.path.exists(fpath):
+            with open(fpath, "r") as f:
+                parts.append(label)
+                parts.append(f.read())
+    
+    parts.append("")
+    parts.append("ПРАВИЛА ОТВЕТОВ:")
+    parts.append("- Отвечай кратко (2-4 предложения)")
+    parts.append("- Не выдумывай характеристики, не обещай того чего нет")
+    parts.append("- Если вопрос сложный - предложи написать админу")
+    parts.append("- Не выходи за темы сайта")
+    parts.append("- Будь дружелюбным, называй пользователя по имени")
+    parts.append("- Если пользователь хочет зарегистрироваться — используй информацию из status-groups.md: регистрация повышает статус с Безработного до Работника, это бесплатно и доступно всем")
+    parts.append("- Ты НЕ можешь никого регистрировать, менять статусы или группы доступа. Предлагай пользователю зарегистрироваться самостоятельно на сайте или написать админу.")
+    
+    return "\n".join(parts)
+
+system_prompt = build_system_prompt()
 
 @app.post("/api/chat/anonymous-send")
 async def api_anonymous_send(request: Request):
@@ -695,6 +729,7 @@ async def api_anonymous_send(request: Request):
     from app.core.database import async_session
     from app.core.config import settings
     from sqlalchemy import select
+    from datetime import datetime
     import logging
     log = logging.getLogger("ai_agent")
 
