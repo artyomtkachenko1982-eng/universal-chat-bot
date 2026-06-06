@@ -316,7 +316,7 @@
               })();
               (async () => {
                 const platData = await callApi("/api/admin/bot-users", { dle_user_id: u.id });
-                if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); }
+                if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); window.__platformStatsData = platData; }
               })();
             } else {
               // 👤 Обычный юзер: загружаем статистику для карточек и приветствия
@@ -527,11 +527,11 @@
             if (countsData.counts) setAdminCounts(countsData.counts);
           })();
 
-          // Обновляем platformStats при входе на главную (не чаще 1 раза в 5 мин)
-          if (!window.__platformStatsTime || Date.now() - window.__platformStatsTime > 300000) {
+          // Обновляем platformStats при входе на главную (если нет или прошло 5 мин)
+          if (!window.__platformStatsTime || Date.now() - window.__platformStatsTime > 300000 || !window.__platformStatsData) {
             (async () => {
               const platData = await callApi("/api/admin/bot-users", { dle_user_id: user.id });
-              if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); }
+              if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); window.__platformStatsData = platData; }
             })();
           }
                   }
@@ -2668,6 +2668,10 @@
               const c = await callApi("/api/admin/panel", { dle_user_id: user.id, section: "ads", page: 1, limit: 1 });
               if (c.counts) setAdminCounts(c.counts);
             })();
+            (async () => {
+              const platData = await callApi("/api/admin/bot-users", { dle_user_id: user.id });
+              if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); window.__platformStatsData = platData; }
+            })();
                       } else {
             addBotMessage("🔄 Данные обновлены. 👋");
           }
@@ -2870,6 +2874,13 @@
         setUserStatsData(null);
         setPlatformStats(null);
         setAdminSection("ads");
+        // Перезагружаем platformStats если админ
+        if (isAdmin) {
+          (async () => {
+            const platData = await callApi("/api/admin/bot-users", { dle_user_id: user.id });
+            if (!platData.error) { setPlatformStats(platData); window.__platformStatsTime = Date.now(); window.__platformStatsData = platData; }
+          })();
+        }
         setUserStats({ ads: 0, news: 0, messages: 0, loaded: false });
         // Показываем приветствие для неавторизованного
         setMessages([{
