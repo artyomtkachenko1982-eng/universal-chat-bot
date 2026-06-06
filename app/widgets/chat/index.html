@@ -2770,7 +2770,7 @@
             return (
               <div key={chatKey} className="relative overflow-hidden border-b border-gray-100">
                 {/* Кнопки свайпа */}
-                <div className={"absolute inset-y-0 right-0 flex items-stretch transition-opacity duration-200 " + (swipedChatId === "admin_" + chatKey ? "opacity-100" : "opacity-0")}>
+                <div className={"absolute inset-y-0 right-0 flex items-stretch transition-opacity duration-200 " + (swipedChatId === "admin_" + chatKey ? "opacity-100" : "opacity-0 pointer-events-none")}>
                   <button onClick={() => handleArchiveChat(chat.dle_user_id)}
                     className="bg-blue-600 text-white w-16 text-[10px] font-medium flex items-center justify-center leading-tight px-1">🗂<br/>Архив</button>
                   <button onClick={() => handleDeleteChat(chat.dle_user_id, chat.platform_user_id)}
