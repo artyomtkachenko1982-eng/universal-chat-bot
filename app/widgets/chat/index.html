@@ -251,8 +251,9 @@
       const [articleMonths, setArticleMonths] = useState(1);  // месяцев для невечной статьи
 
       useEffect(() => {
+        if (adminSection === "ads" || adminSection === "archive") return;
         messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
-      }, [messages]);
+      }, [messages, adminSection]);
 
       // 🟢 Опрос онлайн-статуса каждые 30 секунд
       useEffect(() => {
@@ -3425,7 +3426,7 @@
                           if (filtered.length === 0 && adminSection !== "archive") {
                             return <div className="text-center text-gray-400 text-xs py-6">📭 Нет элементов в этом разделе</div>;
                           }
-                          const perPage = 5;
+                          const perPage = 4;
                           const totalLocalPages = Math.max(1, Math.ceil(filtered.length / perPage));
                           const curPage = Math.min(adminListPage, totalLocalPages);
                           const pageItems = filtered.slice((curPage-1)*perPage, curPage*perPage);
@@ -3833,7 +3834,7 @@
                         {userAdItems.length === 0 ? (
                           <div className="text-center text-gray-400 text-xs py-6">У вас пока нет заявок на рекламу</div>
                         ) : (() => {
-                          const perPage = 5;
+                          const perPage = 4;
                           const totalPages = Math.ceil(userAdItems.length / perPage);
                           const p = Math.min(userAdPage, totalPages);
                           const pageItems = userAdItems.slice((p-1)*perPage, p*perPage);
@@ -4034,7 +4035,7 @@
                         {userNewsItems.length === 0 ? (
                           <div className="text-center text-gray-400 text-xs py-6">У вас пока нет предложенных новостей</div>
                         ) : (() => {
-                          const perPage = 5;
+                          const perPage = 4;
                           const totalPages = Math.ceil(userNewsItems.length / perPage);
                           const p = Math.min(userNewsPage, totalPages);
                           const pageItems = userNewsItems.slice((p-1)*perPage, p*perPage);
