@@ -465,20 +465,24 @@ async def handle_delete_chat(dle_user_id: int = 0, platform_user_id: str = "") -
         from sqlalchemy import delete, select
         from app.models.database import BotUser
 
-        # Удаляем все сообщения по dle_user_id
-        stmt = delete(AdminMessage).where(AdminMessage.dle_user_id == dle_user_id)
-        await session.execute(stmt)
+        # Удаляем все сообщения — по platform_user_id или dle_user_id
+        if platform_user_id:
+            stmt = delete(AdminMessage).where(AdminMessage.platform_user_id == platform_user_id)
+            await session.execute(stmt)
+        else:
+            stmt = delete(AdminMessage).where(AdminMessage.dle_user_id == dle_user_id)
+            await session.execute(stmt)
 
-        # Удаляем анонимные сообщения от тех же платформ (dle_user_id=None)
-        stmt_bu = select(BotUser).where(BotUser.dle_user_id == dle_user_id)
-        bot_users = (await session.execute(stmt_bu)).scalars().all()
-        for bu in bot_users:
-            stmt_anon = delete(AdminMessage).where(
-                AdminMessage.dle_user_id == None,
-                AdminMessage.platform == bu.platform,
-                AdminMessage.platform_user_id == bu.platform_user_id
-            )
-            await session.execute(stmt_anon)
+            # Удаляем анонимные сообщения от тех же платформ (dle_user_id=None)
+            stmt_bu = select(BotUser).where(BotUser.dle_user_id == dle_user_id)
+            bot_users = (await session.execute(stmt_bu)).scalars().all()
+            for bu in bot_users:
+                stmt_anon = delete(AdminMessage).where(
+                    AdminMessage.dle_user_id == None,
+                    AdminMessage.platform == bu.platform,
+                    AdminMessage.platform_user_id == bu.platform_user_id
+                )
+                await session.execute(stmt_anon)
 
         await session.commit()
 
