@@ -547,7 +547,7 @@
               adminLoadTimerRef.current = null;
               // Повторная проверка: не переключился ли админ в другую комнату за 50 мс
               if (activeRoomRef.current !== targetRoom) return;
-              if (section !== 'archive') await loadAdminSection(section, silent);
+              await loadAdminSection(section, silent);
             }, 50);
             return;
           }
@@ -655,7 +655,7 @@
       // Админ: кнопка «Админка» убрана — весь интерфейс = табы сверху
       // Юзер: кнопки (Профиль и Статистика вынесены в табы)
       const menuButtons = isAdmin
-        ? ["search", "dummy", "dummy", "settings", "channels", "dummy2", "dummy3", "dummy4", "dummy5"]
+        ? ["search", "settings", "channels"]
         : ["search", "advertise", "news_suggest", "admin_message", "settings", "channels"];
 
       const publicActions = ["channels"];
@@ -2540,9 +2540,7 @@
         // Главное меню (кроме admin_panel+messages и adminSelected — там контент в осн. layout)
         if ((step !== "admin_panel" || adminSection !== "messages") && !adminSelected) {
         return (
-          <div className="flex-1 text-center text-xs text-gray-400 py-2">
-            Выберите действие из меню ↓
-          </div>
+          null
         );
         }
       }
@@ -3181,7 +3179,7 @@
                       </div>
 
                       {/* По типам */}
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <div className="flex w-full gap-1.5">
                         <div className="rounded-xl p-3 text-center" style={{background:"#f0f4ff"}}>
                           <div className="text-lg font-bold text-blue-600">{adminStats.total_feed}</div>
                           <div className="text-[10px] text-gray-500">📢 Объявл.</div>
@@ -3387,7 +3385,7 @@
                               <button key={f.key} onClick={() => { 
                                 setArchiveFilterType(f.key); 
                                 setAdminListPage(1);
-                                if (f.key === "chat") loadAdminSection("archive", true, "chat");
+                                loadAdminSection("archive", true, f.key === "chat" ? "chat" : null);
                               }}
                                 className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                                   archiveFilterType === f.key
@@ -4245,7 +4243,7 @@
                             {/* Вкладка: Реклама (старые счётчики) */}
                             {statsTab === "ads" && (
                               <>
-                                <div className="grid grid-cols-3 gap-1.5 anim-in">
+                                <div className="flex gap-2 justify-center.5 anim-in">
                                   <div className="rounded-xl p-3 text-center" style={{background:"#fff7ed",border:"1px solid #fed7aa"}}>
                                     <div className="text-xl font-extrabold" style={{color:"#f97316"}}>{userStatsData.total_ads}</div>
                                     <div className="text-[9px] text-gray-500 font-semibold uppercase tracking-wide">📢 Реклама</div>
@@ -4634,16 +4632,17 @@
           )}
 
           {/* Поле ввода — скрыто при просмотре заявки в админке */}
-          {!(step === "admin_panel" && adminSelected) && (
-          <div className="border-t border-gray-200 px-3 py-2 bg-white">
-            {renderInputArea()}
-          </div>
-          )}
+          {(() => {
+          if (step === "admin_panel" && adminSelected) return <div className="border-t border-gray-200 pb-2"></div>;
+          const _input = renderInputArea();
+          if (_input === null || _input === undefined) return <div className="border-t border-gray-200 pb-2"></div>;
+          return <div className="border-t border-gray-200 px-3 py-2 bg-white">{_input}</div>;
+        })()}
 
           {/* Меню кнопок 3×3 — только для залогиненных */}
           {step !== "start" && user && !user.anon && activeRoom === "main" && !(step === "admin_panel" && adminSelected) && (
-            <div className="border-t border-gray-200 bg-gray-50 p-2">
-              <div className="grid grid-cols-3 gap-1">
+            <div className="px-2 pt-0 pb-0.5">
+              <div className="flex w-full gap-1">
                 {menuButtons.map(action => {
                   if (action.startsWith("dummy")) {
                     return <div key={action} className="invisible">—</div>;
@@ -4653,7 +4652,7 @@
                       key={action}
                       onClick={() => handleMenuClick(action)}
                       disabled={loading || (!user && !publicActions.includes(action))}
-                      className={`text-xs py-2 px-1 rounded-md font-medium transition-colors
+                      className={`flex-1 text-xs py-2 px-1 rounded-md font-medium transition-colors
                         ${(!user && !publicActions.includes(action))
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 shadow-sm"
@@ -4664,11 +4663,13 @@
                   );
                 })}
               </div>
+              <div className="text-center text-[10px] text-gray-300 border-t border-gray-100 mt-2 pt-1 pb-0.5">Разработано turbinist.ru</div>
             </div>
           )}
 
           {/* 🖼 Полноэкранный просмотр картинки */}
           {modalImage && (
+              
             <div className="fixed inset-0 z-[99999] bg-black/85 flex items-center justify-center p-4"
               onClick={() => setModalImage(null)} style={{backdropFilter:"blur(4px)"}}>
               <div className="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center">
