@@ -596,10 +596,10 @@ async def api_mark_chat_read(request: Request):
     import json
     body = await request.json()
     dle_user_id = body.get("dle_user_id", 0)
-    if not dle_user_id:
-        return {"error": "Нужен dle_user_id"}
-    return await handle_mark_chat_read(dle_user_id)
-
+    platform_user_id = body.get("platform_user_id", "")
+    if not dle_user_id and not platform_user_id:
+        return {"error": "Нужен dle_user_id или platform_user_id"}
+    return await handle_mark_chat_read(dle_user_id, platform_user_id)
 
 @app.post("/api/chat/delete")
 async def api_delete_chat(request: Request):

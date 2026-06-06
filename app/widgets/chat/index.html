@@ -1666,6 +1666,8 @@
         const chat = await callApi("/api/chat", params);
         setLoading(false);
         if (chat.messages) setChatMessages(chat.messages);
+        // Помечаем сообщения как прочитанные
+        callApi("/api/chat/mark-read", platformUserId ? { platform_user_id: platformUserId } : { dle_user_id: dleUserId }).catch(() => {});
       }
 
       // Админ отправляет ответ в чат

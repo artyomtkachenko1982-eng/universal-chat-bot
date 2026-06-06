@@ -431,28 +431,30 @@ async def handle_get_chat(dle_user_id: int = 0, platform_user_id: str = "") -> d
     return {"messages": messages, "total": len(messages)}
 
 
-async def handle_mark_chat_read(dle_user_id: int) -> dict:
+async def handle_mark_chat_read(dle_user_id: int = 0, platform_user_id: str = "") -> dict:
     """
     Помечает все непрочитанные сообщения юзера как "answered".
     Вызывается, когда юзер открывает чат в веб-виджете.
     """
-    if not dle_user_id:
-        return {"error": "Нужен dle_user_id"}
+    if not dle_user_id and not platform_user_id:
+        return {"error": "Нужен dle_user_id или platform_user_id"}
 
     async with async_session() as session:
         from sqlalchemy import update
 
         stmt = (
             update(AdminMessage)
-            .where(AdminMessage.dle_user_id == dle_user_id)
             .where(AdminMessage.status == "new")
             .values(status="answered", answered_at=datetime.utcnow())
         )
+        if platform_user_id:
+            stmt = stmt.where(AdminMessage.platform_user_id == platform_user_id)
+        else:
+            stmt = stmt.where(AdminMessage.dle_user_id == dle_user_id)
         await session.execute(stmt)
         await session.commit()
 
     return {"status": "ok"}
-
 
 async def handle_delete_chat(dle_user_id: int = 0, platform_user_id: str = "") -> dict:
     """
