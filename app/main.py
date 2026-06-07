@@ -689,7 +689,7 @@ async def api_admin_chat_reply(request: Request):
 def build_system_prompt() -> str:
     """Собрать system prompt из knowledge_base файлов."""
     import os
-    kb = "/opt/chat/knowledge_base"
+    kb = "/app/knowledge_base"
     parts = []
     
     parts.append("Ты - ИИ-агент сайта turbinist.ru. Ты отвечаешь анонимным посетителям сайта.")
