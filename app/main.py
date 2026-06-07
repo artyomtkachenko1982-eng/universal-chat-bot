@@ -1130,7 +1130,7 @@ async def api_agent_create_user(request: Request):
     # Register — group 4 (Работник) hardcoded, no way to override
     REGISTER_GROUP = 4
     try:
-        result = await dle_client.external_register(login, password, email, REGISTER_GROUP, False, 0, 0, 1)
+        result = await dle_client.external_register(login, password, email, REGISTER_GROUP)
         if result.get("error"):
             log.error(f"external_register failed: {result}")
             return {"success": False, "error": "Не удалось создать пользователя. Попробуй позже."}
