@@ -25,7 +25,6 @@ class DLEClient:
         return {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
-            "Host": "www.turbinist.ru",
         }
 
     async def _post(self, action: str, params: list) -> dict:
@@ -78,13 +77,14 @@ class DLEClient:
         return await self._post("take_user_by_id", [user_id, "*"])
 
     async def external_register(
-        self, login: str, password: str, email: str, group: int
+        self, login: str, password: str, email: str, group: int,
+        reg_date=None, catlist=0, question=0, answer=1
     ) -> dict:
         """
         Зарегистрировать нового пользователя.
-        DLE API: external_register(login, password, email, group)
+        DLE API: external_register(login, password, email, group, reg_date, catlist, question, answer)
         """
-        return await self._post("external_register", [login, password, email, group])
+        return await self._post("external_register", [login, password, email, group, reg_date, catlist, question, answer])
 
     async def take_news(self, cat: str = "", limit: int = 10, start: int = 0) -> dict:
         """
