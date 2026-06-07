@@ -25,6 +25,7 @@ class DLEClient:
         return {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
+            "Host": "www.turbinist.ru",
         }
 
     async def _post(self, action: str, params: list) -> dict:
