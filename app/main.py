@@ -701,6 +701,7 @@ def build_system_prompt() -> str:
         ("access/status-groups.md", "=== ГРУППЫ ПОЛЬЗОВАТЕЛЕЙ ==="),
         ("access/how-to-buy.md", "=== КАК ОПЛАТИТЬ ==="),
         ("access/contacts.md", "=== КОНТАКТЫ АДМИНИСТРАТОРА ==="),
+        ("access/registration.md", "=== РЕГИСТРАЦИЯ ЧЕРЕЗ БОТА ==="),
     ]:
         fpath = os.path.join(kb, fname)
         if os.path.exists(fpath):
@@ -716,7 +717,7 @@ def build_system_prompt() -> str:
     parts.append("- Не выходи за темы сайта")
     parts.append("- Будь дружелюбным, называй пользователя по имени")
     parts.append("- Если пользователь хочет зарегистрироваться — используй информацию из status-groups.md: регистрация повышает статус с Безработного до Работника, это бесплатно и доступно всем")
-    parts.append("- Ты НЕ можешь никого регистрировать, менять статусы или группы доступа. Предлагай пользователю зарегистрироваться самостоятельно на сайте или написать админу.")
+    parts.append("- Ты МОЖЕШЬ регистрировать пользователей ТОЛЬКО в группу Работник (group_id=4). Инструкция — в разделе РЕГИСТРАЦИЯ ЧЕРЕЗ БОТА. Менять статусы и группы доступа ты НЕ можешь.")
     
     return "\n".join(parts)
 
@@ -1074,6 +1075,73 @@ async def api_me(req: Request):
         },
     }
 
+
+
+@app.post("/api/agent/create-user")
+async def api_agent_create_user(request: Request):
+    """Регистрация через ИИ-бота. Только группа Работник (4)."""
+    import secrets, string, re, logging
+    log = logging.getLogger("ai_agent")
+    
+    body = await request.json()
+    login = body.get("login", "").strip()
+    email = body.get("email", "").strip()
+    platform_user_id = body.get("platform_user_id", "").strip()
+    
+    # Validation
+    if not login or not email or not platform_user_id:
+        return {"success": False, "error": "Нужны login, email и platform_user_id"}
+    
+    if not re.match(r'^[a-zA-Z0-9_]{3,32}$', login):
+        return {"success": False, "error": "Логин: только латинские буквы, цифры, подчёркивание, 3-32 символа"}
+    
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return {"success": False, "error": "Некорректный email"}
+    
+    # Rate limit: 3 per hour per visitor
+    from app.core.rate_limiter import check_rate_limit
+    allowed, remaining = await check_rate_limit(platform_user_id, "register")
+    if not allowed:
+        return {"success": False, "error": "Слишком много регистраций. Попробуй через час."}
+    
+    # Check login/email availability
+    from app.core.dle_client import dle_client
+    
+    try:
+        existing_login = await dle_client.take_user_by_name(login)
+        if existing_login and existing_login.get("data"):
+            return {"success": False, "error": f'Логин "{login}" уже занят. Придумай другой.'}
+    except Exception as e:
+        log.error(f"take_user_by_name failed: {e}")
+        return {"success": False, "error": "Ошибка проверки логина. Попробуй позже."}
+    
+    try:
+        existing_email = await dle_client.take_user_by_email(email)
+        if existing_email and existing_email.get("data"):
+            return {"success": False, "error": "Этот email уже используется. Укажи другой."}
+    except Exception as e:
+        log.error(f"take_user_by_email failed: {e}")
+        return {"success": False, "error": "Ошибка проверки email. Попробуй позже."}
+    
+    # Generate password
+    alphabet = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(alphabet) for _ in range(12))
+    
+    # Register — group 4 (Работник) hardcoded, no way to override
+    REGISTER_GROUP = 4
+    try:
+        result = await dle_client.external_register(login, password, email, REGISTER_GROUP)
+        if result.get("error"):
+            log.error(f"external_register failed: {result}")
+            return {"success": False, "error": "Не удалось создать пользователя. Попробуй позже."}
+    except Exception as e:
+        log.error(f"external_register exception: {e}")
+        return {"success": False, "error": "Ошибка сервера при регистрации. Попробуй позже."}
+    
+    # Password NOT in logs
+    log.info(f"User registered: login={login}, email={email}, platform={platform_user_id}")
+    
+    return {"success": True, "login": login, "password": password}
 
 @app.get("/api/me/stats")
 async def api_my_stats(req: Request):
